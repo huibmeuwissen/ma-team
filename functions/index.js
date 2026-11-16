@@ -1,4 +1,4 @@
-// Cloud Function van het MA Teamdashboard: stuurt elke minuut pushmeldingen voor verlopen taken.
+// Cloud Function van het MA Teamdashboard: stuurt elke 2 minuten pushmeldingen voor verlopen taken.
 // Uitrollen: in de map "MA Teamdashboard website" -> firebase deploy --only functions
 // Let op: logs nooit met teamcodes, namen of taakteksten vullen.
 const { onSchedule } = require("firebase-functions/v2/scheduler");
@@ -10,7 +10,7 @@ initializeApp();
 const WEEK = 7 * 24 * 60 * 60 * 1000;
 
 exports.meldingen = onSchedule(
-  { schedule: "every 1 minutes", region: "europe-west1", timeZone: "Europe/Amsterdam", memory: "256MiB", timeoutSeconds: 60, retryCount: 0 },
+  { schedule: "every 2 minutes", region: "europe-west1", timeZone: "Europe/Amsterdam", memory: "256MiB", timeoutSeconds: 60, retryCount: 0 },
   async () => {
     const db = getFirestore();
     const fcm = getMessaging();
