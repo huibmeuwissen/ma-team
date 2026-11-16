@@ -111,9 +111,11 @@ main { max-width: 1400px; margin: 0 auto; padding-block: 24px 70px; display: fle
 /* spel: MA Memory */
 .memo { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; width: 100%; max-width: 460px; margin: 4px auto 0; }
 .memo button { aspect-ratio: 1; border-radius: 12px; border: 1px solid var(--border); background: var(--brand); color: var(--brand-ink); font-size: clamp(1.6rem, 9vw, 2.4rem); font-weight: 800; cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 0; transition: transform .18s ease, background .18s ease; }
+.memo button img { width: 88%; height: 88%; object-fit: contain; border-radius: 8px; background: #fff; pointer-events: none; }
+.memo button.gevonden img { opacity: .75; }
 .memo button .rug { font-size: .95rem; letter-spacing: .04em; opacity: .85; font-style: italic; }
-.memo button.open { background: var(--surface-2); color: var(--ink); transform: scale(1.04); }
-.memo button.gevonden { background: var(--brand-soft); color: var(--ink); border-color: var(--brand-line); cursor: default; }
+.memo button.open { background: #fff; color: var(--ink); transform: scale(1.04); border-color: var(--brand); }
+.memo button.gevonden { background: #fff; color: var(--ink); border: 2px solid var(--brand-line); cursor: default; }
 .memo button:focus-visible { outline: 3px solid var(--brand-line); outline-offset: 2px; }
 .spelbar { display: flex; flex-wrap: wrap; gap: 8px 18px; align-items: center; justify-content: center; margin-bottom: 12px; font-variant-numeric: tabular-nums; }
 .spelbar b { font-size: 1.15rem; }
@@ -752,12 +754,21 @@ td.wrap { min-width: 220px; max-width: 460px; overflow-wrap: anywhere; }
   }
   /* ================= spel: MA Memory ================= */
   // Zoek de paren boerderij-plaatjes. De tijd telt vanaf de eerste klik; de snelste tijden van het team staan in de ranglijst.
-  var SPEL_PLAATJES = ["🚜", "🐄", "🌾", "🌽", "🐖", "🐓", "🥔", "🧤"];
+  // productfoto's uit de eigen webwinkel; elke ronde worden er 8 willekeurig gekozen
+  var SPEL_PRODUCTEN = [
+    ["7607008", "Strooizout 7,5 kg emmer"], ["3310002", "Felco snoeischaar 2"], ["4702100", "Broeskop Geli-gieter"],
+    ["4642114", "Kruiwagenwiel Hummer"], ["4811478", "Regentonvulautomaat"], ["3500104", "Kniekussen"],
+    ["3106529", "Cylindro onderzetter"], ["4512015", "Gloria gasfles"], ["5813022", "Thermometer"],
+    ["3443725", "Anti-kras vilt"], ["7510000", "Hovenierskit"], ["3611410", "Boomband set"],
+    ["4302200", "Trudigravel wit"], ["1531806", "Smart standaard"], ["6617035", "Wegwerpkwast"]
+  ];
   var LS_BEST = "maTeam.memoryBest";
   var spel = null, spelTimer = null, scores = [], scoresSub = null;
   function nieuwSpel() {
-    var kaarten = SPEL_PLAATJES.concat(SPEL_PLAATJES).map(function (p, i) { return { p: p, id: i, open: false, gevonden: false }; });
-    for (var i = kaarten.length - 1; i > 0; i--) { var j = Math.floor(Math.random() * (i + 1)); var x = kaarten[i]; kaarten[i] = kaarten[j]; kaarten[j] = x; }
+    function schud(a) { for (var i = a.length - 1; i > 0; i--) { var j = Math.floor(Math.random() * (i + 1)); var x = a[i]; a[i] = a[j]; a[j] = x; } return a; }
+    var keuze = schud(SPEL_PRODUCTEN.slice()).slice(0, 8);
+    keuze.forEach(function (p) { new Image().src = "img/memory/" + p[0] + ".jpg"; }); // vooraf laden, zodat omdraaien direct een foto toont
+    var kaarten = schud(keuze.concat(keuze).map(function (p, i) { return { p: p[0], naam: p[1], id: i, open: false, gevonden: false }; }));
     clearInterval(spelTimer);
     spel = { kaarten: kaarten, gekozen: [], zetten: 0, start: null, eind: null, bezig: false };
   }
@@ -795,8 +806,8 @@ td.wrap { min-width: 220px; max-width: 460px; overflow-wrap: anywhere; }
     bord.textContent = "";
     spel.kaarten.forEach(function (k) {
       var zicht = k.open || k.gevonden;
-      bord.appendChild(el("button", { type: "button", class: k.gevonden ? "gevonden" : k.open ? "open" : "", "aria-label": zicht ? k.p : "Verborgen kaart", onclick: function () { klikKaart(k); } },
-        [zicht ? k.p : el("span", { class: "rug", text: "MA" })]));
+      bord.appendChild(el("button", { type: "button", class: k.gevonden ? "gevonden" : k.open ? "open" : "", "aria-label": zicht ? k.naam : "Verborgen kaart", title: k.gevonden ? k.naam : null, "data-p": zicht ? k.p : null, onclick: function () { klikKaart(k); } },
+        [zicht ? el("img", { src: "img/memory/" + k.p + ".jpg", alt: k.naam, draggable: "false" }) : el("span", { class: "rug", text: "MA" })]));
     });
     var z = $("spel-zetten"); if (z) z.textContent = String(spel.zetten);
     var t = $("spel-tijd"); if (t) t.textContent = fmtTijd(spelTijd());
@@ -816,7 +827,7 @@ td.wrap { min-width: 220px; max-width: 460px; overflow-wrap: anywhere; }
     volgScores();
     var best = spelBest();
     main.appendChild(el("div", { class: "head" }, [el("h1", { text: "MA Memory" }),
-      el("p", { text: "Even pauze? Zoek de 8 paren zo snel mogelijk. De tijd loopt vanaf je eerste klik." })]));
+      el("p", { text: "Even pauze? Zoek de 8 paren MA-producten zo snel mogelijk. De tijd loopt vanaf je eerste klik; elke ronde andere producten." })]));
     var c1 = el("div", { class: "card" }, [
       el("div", { class: "spelbar" }, [
         el("span", {}, ["Tijd ", el("b", { id: "spel-tijd", text: fmtTijd(spelTijd()) })]),
