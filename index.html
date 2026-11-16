@@ -1,0 +1,1026 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex">
+</head>
+<body>
+<title>MA Teamdashboard</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+/* Indeling: groene kopbalk met tabbladen (zelfde stijl als het lokale MA Dashboard); daaronder één kolom kaarten. Opvolg-pop-up als modaal venster; klantkaart als zijpaneel. */
+:root {
+  --page: #f4f5f1; --surface: #ffffff; --surface-2: #f1f3ee; --surface-3: #e3e7de;
+  --ink: #16201a; --ink-2: #4c574f; --muted: #7a847c;
+  --grid: #e6e8e1; --border: rgba(22,32,26,.1);
+  --brand: #1f6b3a; --brand-dark: #154a29; --brand-ink: #ffffff; --brand-soft: #e7f2ea; --brand-line: #b9d8c3;
+  --top-bg: #163f26; --top-ink: #eaf3ec; --top-muted: #a9c4b1; --top-line: #7fd09e;
+  --bar: #2f8a52;
+  --due-bg: #fff6df; --due-border: #efcb72; --due-ink: #7a5300;
+  --good-bg: #e6f4ea; --good-ink: #1d6b35; --crit: #c23434; --crit-bg: #fbeaea;
+  --info-bg: #e8f0fb; --info-ink: #24508f;
+  --shadow: 0 1px 2px rgba(22,32,26,.05), 0 4px 14px rgba(22,32,26,.05);
+  --scrim: rgba(10,20,14,.45);
+  --radius: 12px;
+  --font: "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --page: #0f1411; --surface: #19201b; --surface-2: #212a24; --surface-3: #2c372f;
+    --ink: #eef2ee; --ink-2: #bcc6be; --muted: #8a958c;
+    --grid: #29322b; --border: rgba(255,255,255,.1);
+    --brand: #56b87b; --brand-dark: #7fd09e; --brand-ink: #08130c; --brand-soft: #1c2c22; --brand-line: #2f5a3f;
+    --top-bg: #0c1f14; --top-ink: #eaf3ec; --top-muted: #8fb09a; --top-line: #7fd09e;
+    --bar: #4fae73;
+    --due-bg: #2f2710; --due-border: #6d5620; --due-ink: #f3d58a;
+    --good-bg: #16301f; --good-ink: #7fd39a; --crit: #f08080; --crit-bg: #3a1c1c;
+    --info-bg: #182638; --info-ink: #9cc0f0;
+    --shadow: 0 1px 2px rgba(0,0,0,.3); --scrim: rgba(0,0,0,.6);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --page: #0f1411; --surface: #19201b; --surface-2: #212a24; --surface-3: #2c372f;
+  --ink: #eef2ee; --ink-2: #bcc6be; --muted: #8a958c;
+  --grid: #29322b; --border: rgba(255,255,255,.1);
+  --brand: #56b87b; --brand-dark: #7fd09e; --brand-ink: #08130c; --brand-soft: #1c2c22; --brand-line: #2f5a3f;
+  --top-bg: #0c1f14; --top-ink: #eaf3ec; --top-muted: #8fb09a; --top-line: #7fd09e;
+  --bar: #4fae73;
+  --due-bg: #2f2710; --due-border: #6d5620; --due-ink: #f3d58a;
+  --good-bg: #16301f; --good-ink: #7fd39a; --crit: #f08080; --crit-bg: #3a1c1c;
+  --info-bg: #182638; --info-ink: #9cc0f0;
+  --shadow: 0 1px 2px rgba(0,0,0,.3); --scrim: rgba(0,0,0,.6);
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { background: var(--page); color: var(--ink); font-family: var(--font); font-size: 14.5px; line-height: 1.45; }
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 30; background: var(--top-bg); }
+button, input, select, textarea { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+h1 { font-size: 1.6rem; font-weight: 650; letter-spacing: -.01em; margin: 0; text-wrap: balance; }
+h2 { font-size: 1.05rem; font-weight: 650; margin: 0; }
+h3 { font-size: .92rem; font-weight: 650; margin: 0; }
+p { margin: 0; }
+a { color: var(--brand); }
+.muted { color: var(--muted); }
+.small { font-size: .85rem; }
+.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+/* kopbalk */
+.top { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 20; background: var(--top-bg); color: var(--top-ink); box-shadow: 0 1px 0 rgba(0,0,0,.2); }
+.top .in { display: flex; align-items: stretch; flex-wrap: wrap; gap: 0 20px; max-width: 1400px; margin: 0 auto;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+.brandname { display: flex; align-items: center; gap: 10px; font-weight: 650; font-size: 1.02rem; min-height: 54px; white-space: nowrap; }
+.brandname .ma { font-size: 1.45rem; font-weight: 800; font-style: italic; letter-spacing: -.04em; color: #8fdcab; line-height: 1; }
+.brandname span.t { font-weight: 400; color: var(--top-muted); font-size: .78rem; padding: 2px 8px; border: 1px solid rgba(255,255,255,.18); border-radius: 10px; }
+nav { display: flex; gap: 2px; flex-wrap: wrap; }
+nav a { display: flex; align-items: center; gap: 6px; padding: 0 12px; min-height: 54px; text-decoration: none; color: var(--top-muted);
+  border-top: 3px solid transparent; border-bottom: 3px solid transparent; }
+nav a:hover { color: #fff; background: rgba(255,255,255,.06); }
+nav a.on { color: #fff; font-weight: 600; border-bottom-color: var(--top-line); }
+nav a:focus-visible { outline-color: var(--top-line); outline-offset: -3px; }
+.npill { display: inline-block; min-width: 19px; padding: 0 6px; border-radius: 10px; background: #e5484d; color: #fff; font-size: .74rem; font-weight: 700; text-align: center; line-height: 1.5; }
+.me { margin-left: auto; display: flex; align-items: center; gap: 10px; color: var(--top-muted); font-size: .85rem; padding-block: 8px; }
+.me b { color: var(--top-ink); font-weight: 650; }
+.me button { background: transparent; border: 1px solid rgba(255,255,255,.25); color: var(--top-ink); border-radius: 8px; padding: 4px 10px; cursor: pointer; }
+.me button:hover { background: rgba(255,255,255,.08); }
+
+main { max-width: 1400px; margin: 0 auto; padding-block: 24px 70px; display: flex; flex-direction: column; gap: 18px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+.head { display: flex; flex-direction: column; gap: 4px; }
+.head p { color: var(--ink-2); max-width: 85ch; }
+.banner { border-radius: 10px; padding: 10px 14px; border: 1px solid var(--due-border); background: var(--due-bg); color: var(--due-ink); }
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); padding: 18px 20px; min-width: 0; display: flex; flex-direction: column; gap: 12px; }
+.card.due { background: var(--due-bg); border-color: var(--due-border); }
+.cardhead { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
+.grid2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
+@media (max-width: 900px) { .grid2 { grid-template-columns: minmax(0, 1fr); } }
+.tiles { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; }
+@media (max-width: 900px) { .tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.tile { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); padding: 14px 16px; text-decoration: none; color: inherit; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+a.tile:hover { border-color: var(--brand-line); }
+.tile .l { color: var(--ink-2); font-size: .76rem; font-weight: 650; text-transform: uppercase; letter-spacing: .05em; }
+.tile .v { font-size: 1.7rem; font-weight: 650; letter-spacing: -.02em; line-height: 1.2; font-variant-numeric: tabular-nums; }
+.tile .n { color: var(--muted); font-size: .82rem; }
+.tile.hot { background: var(--due-bg); border-color: var(--due-border); }
+.tile.hot .v { color: var(--due-ink); }
+
+/* knoppen, chips, velden */
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; border: 1px solid var(--surface-3); background: var(--surface); border-radius: 8px; padding: 7px 13px; cursor: pointer; white-space: nowrap; text-decoration: none; color: inherit; }
+.btn:hover { background: var(--surface-2); }
+.btn.pri { background: var(--brand); border-color: var(--brand); color: var(--brand-ink); font-weight: 650; }
+.btn.pri:hover { background: var(--brand-dark); border-color: var(--brand-dark); }
+.btn.sm { padding: 3px 9px; font-size: .84rem; }
+.btn.danger { color: var(--crit); }
+.btn.danger.sure { background: var(--crit-bg); border-color: var(--crit); font-weight: 650; }
+.btn:disabled { opacity: .5; cursor: default; }
+.bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.chip { border: 1px solid var(--surface-3); background: var(--surface); border-radius: 999px; padding: 5px 12px; cursor: pointer; }
+.chip:hover { border-color: var(--brand-line); }
+.chip.on, .chip[aria-pressed="true"] { background: var(--brand); border-color: var(--brand); color: var(--brand-ink); font-weight: 600; }
+.field { display: flex; flex-direction: column; gap: 5px; min-width: 0; position: relative; }
+.field > label, .field > .lbl { font-size: .76rem; font-weight: 650; text-transform: uppercase; letter-spacing: .05em; color: var(--ink-2); }
+input[type="text"], input[type="search"], input[type="date"], select, textarea { width: 100%; background: var(--surface); border: 1px solid var(--surface-3); border-radius: 8px; padding: 8px 10px; }
+textarea { resize: vertical; min-height: 70px; }
+input:focus, select:focus, textarea:focus { border-color: var(--brand); outline: 2px solid var(--brand-soft); outline-offset: 0; }
+.search { max-width: 380px; }
+.opts { display: flex; flex-wrap: wrap; gap: 6px; }
+.opt { position: relative; display: inline-flex; align-items: center; padding: 6px 12px; border: 1px solid var(--surface-3); border-radius: 999px; background: var(--surface); cursor: pointer; user-select: none; }
+.opt input { position: absolute; opacity: 0; pointer-events: none; }
+.opt:hover { border-color: var(--brand-line); }
+.opt:has(input:checked) { background: var(--brand); border-color: var(--brand); color: var(--brand-ink); font-weight: 600; }
+.opt:has(input:focus-visible) { outline: 2px solid var(--brand); outline-offset: 2px; }
+.check { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border: 1px solid var(--brand-line); border-radius: 10px; background: var(--brand-soft); cursor: pointer; font-weight: 600; }
+.check input { width: 20px; height: 20px; accent-color: var(--brand); }
+.err { color: var(--crit); font-size: .88rem; }
+.formgrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.formgrid .wide { grid-column: 1 / -1; }
+@media (max-width: 640px) { .formgrid { grid-template-columns: minmax(0, 1fr); } }
+
+/* tabellen en lijsten */
+.tw { overflow-x: auto; margin: 0 -4px; }
+table { border-collapse: collapse; width: 100%; font-size: .92rem; }
+th { text-align: left; font-size: .74rem; font-weight: 650; text-transform: uppercase; letter-spacing: .05em; color: var(--ink-2); padding: 6px 8px; border-bottom: 1px solid var(--surface-3); white-space: nowrap; }
+td { padding: 8px; border-bottom: 1px solid var(--grid); vertical-align: top; }
+tr.click { cursor: pointer; }
+tr.click:hover td { background: var(--surface-2); }
+td.wrap { min-width: 220px; max-width: 460px; overflow-wrap: anywhere; }
+.klantlink { background: none; border: 0; padding: 0; color: var(--brand); cursor: pointer; text-align: left; font-weight: 600; text-decoration: underline; text-decoration-color: var(--brand-line); text-underline-offset: 2px; }
+.pill { display: inline-block; padding: 1px 9px; border-radius: 999px; font-size: .77rem; font-weight: 650; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.pill.due { background: var(--due-bg); color: var(--due-ink); box-shadow: inset 0 0 0 1px var(--due-border); }
+.pill.plan { background: var(--info-bg); color: var(--info-ink); }
+.pill.klaar { background: var(--good-bg); color: var(--good-ink); }
+.pill.grey { background: var(--surface-2); color: var(--ink-2); }
+.pill.p1 { background: var(--crit-bg); color: var(--crit); }
+.list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.list > li { display: flex; gap: 12px; align-items: flex-start; padding: 10px 0; border-top: 1px solid var(--grid); min-width: 0; }
+.list > li:first-child { border-top: 0; padding-top: 0; }
+.list .body { flex: 1 1 auto; min-width: 0; overflow-wrap: anywhere; display: flex; flex-direction: column; gap: 2px; }
+.list .meta { color: var(--muted); font-size: .83rem; }
+.list .acts { flex: none; display: flex; gap: 6px; align-items: center; }
+.empty { color: var(--muted); }
+.tekst { white-space: pre-wrap; color: var(--ink-2); }
+
+/* grafiek */
+.chart svg { display: block; width: 100%; height: auto; }
+.chart text { fill: var(--muted); font-size: 11px; font-family: var(--font); }
+.chart .lbl-v { fill: var(--ink-2); font-size: 10.5px; font-variant-numeric: tabular-nums; }
+
+/* modaal en zijpaneel */
+.scrim { position: fixed; inset: 0; background: var(--scrim); z-index: 50; display: flex; align-items: center; justify-content: center; padding: 16px; padding-top: calc(16px + env(safe-area-inset-top, 0px)); padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px)); }
+.dialog { background: var(--surface); border-radius: 14px; box-shadow: 0 20px 60px rgba(0,0,0,.3); width: min(620px, 100%); max-height: 100%; overflow: auto; padding: 22px 24px; display: flex; flex-direction: column; gap: 14px; }
+.dialog .kop { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+.dialog .eyebrow { font-size: .76rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--due-ink); }
+.dialog .foot { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; align-items: center; }
+.dialog .foot .left { margin-right: auto; }
+.taakbox { background: var(--surface-2); border-radius: 10px; padding: 12px 14px; display: flex; flex-direction: column; gap: 4px; }
+.x { border: 0; background: none; font-size: 1.4rem; line-height: 1; cursor: pointer; color: var(--muted); padding: 2px 6px; }
+.drawer-scrim { position: fixed; inset: 0; background: var(--scrim); z-index: 45; }
+.drawer { position: fixed; top: 0; right: 0; bottom: 0; width: min(640px, 100%); background: var(--page); z-index: 46; overflow: auto; box-shadow: -10px 0 40px rgba(0,0,0,.2);
+  padding: calc(18px + env(safe-area-inset-top, 0px)) max(18px, env(safe-area-inset-right, 0px)) calc(30px + env(safe-area-inset-bottom, 0px)) 18px; display: flex; flex-direction: column; gap: 14px; }
+.kv { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 4px 14px; font-size: .92rem; }
+.kv dt { color: var(--muted); }
+.kv dd { margin: 0; overflow-wrap: anywhere; user-select: text; }
+.why { border-left: 3px solid var(--due-border); padding: 4px 0 4px 10px; }
+.ac { position: absolute; top: 100%; left: 0; right: 0; z-index: 5; background: var(--surface); border: 1px solid var(--surface-3); border-radius: 8px; box-shadow: var(--shadow); margin-top: 4px; list-style: none; padding: 4px; max-height: 280px; overflow: auto; }
+.ac li { padding: 7px 9px; border-radius: 6px; cursor: pointer; display: flex; justify-content: space-between; gap: 10px; }
+.ac li small { color: var(--muted); white-space: nowrap; }
+.ac li.on, .ac li:hover { background: var(--brand-soft); }
+.gekozen { display: flex; align-items: center; gap: 8px; padding: 7px 10px; border: 1px solid var(--brand-line); background: var(--brand-soft); border-radius: 8px; }
+.gekozen span { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.login { max-width: 560px; margin: 40px auto; }
+.toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(18px + env(safe-area-inset-bottom, 0px)); z-index: 60; background: var(--ink); color: var(--page); padding: 10px 16px; border-radius: 10px; box-shadow: 0 6px 24px rgba(0,0,0,.25); max-width: calc(100% - 32px); }
+@media (prefers-reduced-motion: no-preference) { .dialog.pop { animation: pop .25s ease-out; } }
+@keyframes pop { from { transform: translateY(8px) scale(.98); opacity: 0; } to { transform: none; opacity: 1; } }
+</style>
+
+<header class="top">
+  <div class="in">
+    <div class="brandname"><span class="ma">MA</span> Meuwissen Agro <span class="t">team</span></div>
+    <nav aria-label="Onderdelen" id="nav"></nav>
+    <div class="me" id="me" hidden></div>
+  </div>
+</header>
+<main id="main"><p class="muted">Dashboard laden…</p></main>
+<div id="layer"></div>
+<div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+
+<script>
+(function () {
+  "use strict";
+  /* ================= basis ================= */
+  var MIN = 60000, DAG = 24 * 60 * MIN, WEEK = 7 * DAG;
+  var INTERVALLEN = [["1min", "Over 1 minuut", MIN], ["1week", "Over 1 week", WEEK], ["2weken", "Over 2 weken", 2 * WEEK], ["1maand", "Over 1 maand", 30 * DAG]];
+  var STANDAARD_TEAM = [
+    { naam: "Huib", rol: "Kantoor" }, { naam: "Renate", rol: "Kantoor" },
+    { naam: "Wilfred", rol: "Buitendienst" }, { naam: "Dirk-Jan", rol: "Buitendienst" },
+    { naam: "Marco", rol: "Buitendienst" }, { naam: "Michael", rol: "Buitendienst" }
+  ];
+  var LS_NAAM = "maTeam.naam", LS_LOCAL = "maTeam.lokaal";
+
+  var D = null;               // statische data (data.json)
+  var KL = {};                // klant op nummer
+  var KING = {};              // KING-contacten per relatienummer
+  var WHY = {};               // signalen uit bellijsten per klant
+  var team = STANDAARD_TEAM.slice();
+  var taken = [], contacten = [];
+  var loadedT = false, loadedC = false;
+  var store = null, lokaal = false, alleenLezen = false;
+  var ik = null, uid = null, userNs = null;
+  var busy = {}, sure = null, sureTimer = null, uitgesteld = {}, popupOpen = null, drawerKlant = null;
+  var st = { taken: "mij", takenKlaar: false, takenWie: "", klQ: "", klF: "omzet", blL: "prio", blMij: true, ctWie: "" };
+
+  function $(id) { return document.getElementById(id); }
+  function el(tag, attrs, kids) {
+    var n = document.createElement(tag);
+    if (attrs) for (var k in attrs) {
+      var v = attrs[k];
+      if (v == null || v === false) continue;
+      if (k === "class") n.className = v;
+      else if (k === "text") n.textContent = v;
+      else if (k.slice(0, 2) === "on") n.addEventListener(k.slice(2), v);
+      else n.setAttribute(k, v === true ? "" : v);
+    }
+    (kids || []).forEach(function (c) { if (c != null && c !== false) n.appendChild(typeof c === "string" || typeof c === "number" ? document.createTextNode(String(c)) : c); });
+    return n;
+  }
+  function eur(v) { return v == null || isNaN(v) ? "–" : "€ " + Math.round(v).toLocaleString("nl-NL"); }
+  function dat(s) { if (!s) return "–"; var d = typeof s === "number" ? new Date(s) : new Date(s + (s.length === 10 ? "T12:00:00" : "")); return isNaN(d) ? String(s) : d.toLocaleDateString("nl-NL", { day: "numeric", month: "short", year: "numeric" }); }
+  function datTijd(ms) { var d = new Date(ms); return d.toLocaleDateString("nl-NL", { weekday: "short", day: "numeric", month: "short" }) + " " + d.toLocaleTimeString("nl-NL", { hour: "2-digit", minute: "2-digit" }); }
+  function iso(ms) { var d = new Date(ms); return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0"); }
+  function over(ms) {
+    if (ms <= 0) return "nu";
+    var s = Math.ceil(ms / 1000); if (s < 60) return "over " + s + " s";
+    var m = Math.round(s / 60); if (m < 60) return "over " + m + " min";
+    var u = Math.round(m / 60); if (u < 36) return "over " + u + " uur";
+    return "over " + Math.round(u / 24) + " dagen";
+  }
+  function geleden(ms) {
+    var m = Math.round((Date.now() - ms) / MIN);
+    if (m < 1) return "zojuist"; if (m < 60) return m + " min geleden";
+    var u = Math.round(m / 60); if (u < 24) return u + " uur geleden";
+    return dat(ms);
+  }
+  function kingNaam(x) { return x === "Dirkjan" ? "Dirk-Jan" : x; }
+  function namen(a) { return a.length < 2 ? a.join("") : a.slice(0, -1).join(", ") + " en " + a[a.length - 1]; }
+  function toast(msg) { var t = $("toast"); t.textContent = msg; t.hidden = false; clearTimeout(toast.t); toast.t = setTimeout(function () { t.hidden = true; }, 3800); }
+  function klantNaam(n) { var k = KL[n]; return k ? k.naam : ""; }
+  function klantPlaats(k) { return k ? (k.plaats ? k.plaats.charAt(0) + k.plaats.slice(1).toLowerCase() : (k.pc || "")) : ""; }
+
+  /* ================= statische data ================= */
+  function bouwIndex() {
+    D.klanten.forEach(function (k) { KL[k.n] = k; });
+    D.contacten.forEach(function (c) { (KING[c[0]] = KING[c[0]] || []).push(c); });
+    function why(n, titel, tekst) { if (n == null) return; (WHY[n] = WHY[n] || []).push([titel, tekst]); }
+    var X = D.kansen || {};
+    (X.prio || []).forEach(function (r) { why(r.k, "Bellijst prio (" + r.prio + ")", r.thema + ": " + r.waarom + (r.actie ? "\nActie: " + r.actie : "")); });
+    (X.opvolg || []).forEach(function (r) { why(r.k, "Opvolgactie uit klantcontact", r.actie + " (vóór " + dat(r.voor) + ")"); });
+    (X.bellijst || []).forEach(function (r) { why(r.k, "Valt stil", r.signaal); });
+    (X.offertes || []).forEach(function (r) { why(r.k, "Open offerte " + r.nr, dat(r.datum) + " · " + eur(r.waarde) + " · " + r.artikelen); });
+    (X.tweede || []).forEach(function (r) { why(r.k, "Nieuwe klant, nog geen 2e order", "Eerste order " + dat(r.eerste) + ", " + eur(r.omzet)); });
+    (X.winter || []).forEach(function (r) { why(r.k, "Winter voorseizoen", r.zout ? "Kocht eerder voor " + eur(r.zout) + " strooizout" : "Vaste klant die nog geen strooizout koopt"); });
+    (X.bijverkoop || []).forEach(function (r) { why(r.k, "Bijverkoop", "Potentie " + eur(r.potentie) + " per jaar · " + r.top3); });
+    (X.werven || []).forEach(function (r) { why(r.k, "Werven", r.soort + " · beste jaar " + r.bestejaar + " · " + eur(r.omzet)); });
+    (X.winkels || []).forEach(function (r) { why(r.k, r.keten + "-winkel", "Koopt: " + r.koopt + (r.mist ? "\nMist: " + r.mist : "")); });
+  }
+
+  /* ================= opslag ================= */
+  function dbStore(db) {
+    return {
+      sub: function (col, cb, err) { return db.collection(col).onSnapshot(function (s) { cb(s.docs.map(function (d) { return Object.assign({ id: d.id }, d.data() || {}); }), s.metadata.fromCache); }, err); },
+      add: function (col, d) { return db.collection(col).add(d); },
+      upd: function (col, id, p) { return db.collection(col).doc(id).update(p); },
+      del: function (col, id) { return db.collection(col).doc(id).delete(); },
+      getDoc: function (path) { return db.doc(path).get().then(function (s) { return s.exists ? s.data() : null; }); },
+      setDoc: function (path, d) { return db.doc(path).set(d); }
+    };
+  }
+  function localStore() {
+    var S = { taken: [], contacten: [], docs: {} }, cbs = {};
+    try { var r = JSON.parse(localStorage.getItem(LS_LOCAL) || "null"); if (r) S = Object.assign(S, r); } catch (e) {}
+    function save(col) { try { localStorage.setItem(LS_LOCAL, JSON.stringify(S)); } catch (e) {} if (cbs[col]) cbs[col](S[col].slice(), false); }
+    function nid() { return "l" + Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
+    return {
+      sub: function (col, cb) { cbs[col] = cb; cb((S[col] || []).slice(), false); return function () {}; },
+      add: function (col, d) { S[col] = S[col] || []; S[col].push(Object.assign({ id: nid() }, d)); save(col); return Promise.resolve(); },
+      upd: function (col, id, p) { S[col] = S[col].map(function (x) { return x.id === id ? Object.assign({}, x, p) : x; }); save(col); return Promise.resolve(); },
+      del: function (col, id) { S[col] = S[col].filter(function (x) { return x.id !== id; }); save(col); return Promise.resolve(); },
+      getDoc: function (p) { return Promise.resolve(S.docs[p] || null); },
+      setDoc: function (p, d) { S.docs[p] = d; save("docs"); return Promise.resolve(); }
+    };
+  }
+  function fout(e) {
+    if (e && e.code === "invalid_argument") { alleenLezen = true; render(); toast("Je kunt hier alleen meekijken, niet wijzigen."); }
+    else if (e && e.code === "quota_exceeded") toast("De opslag is vol. Verwijder eerst oude taken.");
+    else toast("Opslaan lukte niet. Probeer het opnieuw.");
+    throw e;
+  }
+  function eenmaal(key, fn) {
+    if (busy[key]) return Promise.resolve(); busy[key] = true;
+    return Promise.resolve().then(fn).catch(function () {}).then(function () { delete busy[key]; });
+  }
+
+  /* ================= taken-logica ================= */
+  function status(t, now) { return t.status === "klaar" ? "klaar" : (t.opvolgOp <= now ? "due" : "plan"); }
+  function mijnDue(now) {
+    if (!ik) return [];
+    return taken.filter(function (t) { return t.voor === ik && status(t, now) === "due"; }).sort(function (a, b) { return a.opvolgOp - b.opvolgOp; });
+  }
+  function sorteerTaken(a, now) {
+    var r = { due: 0, plan: 1, klaar: 2 };
+    return a.slice().sort(function (x, y) {
+      var sx = status(x, now), sy = status(y, now);
+      if (sx !== sy) return r[sx] - r[sy];
+      return sx === "klaar" ? (y.afgerondOp || 0) - (x.afgerondOp || 0) : x.opvolgOp - y.opvolgOp;
+    });
+  }
+  function statusPill(t, now) {
+    var s = status(t, now);
+    if (s === "due") return el("span", { class: "pill due", text: "Nu opvolgen" });
+    if (s === "plan") return el("span", { class: "pill plan", "data-due": t.opvolgOp, text: over(t.opvolgOp - now) });
+    return el("span", { class: "pill klaar", text: "Klaar" });
+  }
+
+  function maakTaak(d) {
+    var now = Date.now();
+    var doc = { klantN: d.klantN || null, klantNaam: d.klantN ? klantNaam(d.klantN) : (d.klantNaam || ""), titel: d.titel, notitie: d.notitie || "",
+      voor: d.voor, door: ik, gemaakt: now, opvolgOp: now + d.interval, status: "open", log: [] };
+    return store.add("taken", doc).catch(fout);
+  }
+  function registreer(d) {
+    var now = Date.now();
+    return store.add("contacten", { klantN: d.klantN || null, klantNaam: d.klantN ? klantNaam(d.klantN) : (d.klantNaam || ""), datum: iso(now), tijd: now,
+      soort: d.soort || "Telefoon", wie: ik, tekst: d.tekst || "", taakId: d.taakId || null }).catch(fout);
+  }
+
+  /* ================= navigatie ================= */
+  var ROUTES = [["overzicht", "Overzicht"], ["taken", "Taken"], ["klanten", "Klanten"], ["bellijsten", "Bellijsten"], ["contacten", "Contacten"]];
+  function route() { var h = (location.hash || "").slice(1); return ROUTES.some(function (r) { return r[0] === h; }) ? h : "overzicht"; }
+  function renderNav(now) {
+    var nav = $("nav"); nav.textContent = "";
+    var nDue = mijnDue(now).length;
+    ROUTES.forEach(function (r) {
+      if (!D && (r[0] === "klanten" || r[0] === "bellijsten")) return;
+      nav.appendChild(el("a", { href: "#" + r[0], class: route() === r[0] ? "on" : "" }, [r[1], r[0] === "taken" && nDue ? el("span", { class: "npill", text: String(nDue) }) : null]));
+    });
+    var me = $("me"); me.textContent = ""; me.hidden = !ik;
+    if (ik) me.append(el("span", {}, ["Ingelogd als ", el("b", { text: ik })]), el("button", { type: "button", text: "Wisselen", onclick: function () { ik = null; try { localStorage.removeItem(LS_NAAM); } catch (e) {} render(); } }));
+    document.title = (nDue ? "(" + nDue + ") " : "") + "MA Teamdashboard";
+  }
+
+  /* ================= inloggen ================= */
+  function viewLogin(main) {
+    var card = el("div", { class: "card login" }, [
+      el("h1", { text: "Wie ben jij?" }),
+      el("p", { class: "muted", text: "Kies je naam. Je ziet daarna je eigen taken en krijgt een pop-up als iets opgevolgd moet worden. Je keuze wordt onthouden." })
+    ]);
+    var opts = el("div", { class: "bar" });
+    team.forEach(function (p) {
+      opts.appendChild(el("button", { type: "button", class: "chip", onclick: function () { kiesNaam(p.naam); } }, [p.naam + " ", el("span", { class: "muted small", text: "· " + p.rol })]));
+    });
+    card.appendChild(opts);
+    main.appendChild(card);
+  }
+  function kiesNaam(n) {
+    ik = n; try { localStorage.setItem(LS_NAAM, n); } catch (e) {}
+    if (store && uid) store.setDoc("data/users/" + uid + "/profiel", { naam: n }).catch(function () {});
+    render(); checkPopup();
+  }
+
+  /* ================= overzicht ================= */
+  function viewOverzicht(main, now) {
+    var uur = new Date().getHours();
+    var mijn = taken.filter(function (t) { return t.voor === ik && t.status !== "klaar"; });
+    var due = mijnDue(now);
+    var weekGeleden = now - WEEK;
+    var mijnCt = contacten.filter(function (c) { return c.wie === ik && c.tijd >= weekGeleden; }).length;
+    var uitgedeeld = taken.filter(function (t) { return t.door === ik && t.voor !== ik && t.status !== "klaar"; }).length;
+    main.appendChild(el("div", { class: "head" }, [
+      el("h1", { text: (uur < 12 ? "Goedemorgen " : uur < 18 ? "Goedemiddag " : "Goedenavond ") + ik }),
+      el("p", { text: "Je taken, je opvolgingen en wat het team de laatste tijd heeft gedaan." })
+    ]));
+    main.appendChild(el("div", { class: "tiles" }, [
+      tile("#taken", "Nu opvolgen", due.length, due.length ? "klik om af te handelen" : "niets verstreken", due.length > 0),
+      tile("#taken", "Mijn open taken", mijn.length, "waarvan " + (mijn.length - due.length) + " gepland"),
+      tile("#contacten", "Mijn contacten", mijnCt, "afgelopen 7 dagen"),
+      tile("#taken", "Uitgedeeld aan anderen", uitgedeeld, "nog niet afgerond")
+    ]));
+
+    var c1 = el("div", { class: "card" + (due.length ? " due" : "") }, [el("div", { class: "cardhead" }, [el("h2", { text: "Nu opvolgen" }), el("button", { type: "button", class: "btn pri sm", text: "Nieuwe taak", onclick: function () { openTaakForm({}); } })])]);
+    if (!due.length) c1.appendChild(el("p", { class: "empty", text: mijn.length ? "Niets verstreken. Je volgende opvolging staat hieronder bij Gepland." : D ? "Je hebt geen open taken. Maak een taak vanuit een klantkaart of een bellijst, of met de knop Nieuwe taak." : "Je hebt geen open taken. Maak er een met de knop Nieuwe taak." }));
+    else c1.appendChild(takenLijst(due, now, true));
+    var gepland = sorteerTaken(mijn.filter(function (t) { return status(t, now) === "plan"; }), now).slice(0, 6);
+    if (gepland.length) { c1.appendChild(el("h3", { text: "Gepland" })); c1.appendChild(takenLijst(gepland, now, true)); }
+
+    var c2 = el("div", { class: "card" }, [el("div", { class: "cardhead" }, [el("h2", { text: "Laatste contactregistraties van het team" }), el("a", { href: "#contacten", class: "small", text: "Alles" })])]);
+    var laatste = contacten.slice().sort(function (a, b) { return b.tijd - a.tijd; }).slice(0, 7);
+    c2.appendChild(laatste.length ? contactLijst(laatste) : el("p", { class: "empty", text: "Nog geen registraties in dit dashboard. Als iemand een taak afrondt met \"nagebeld\", komt die hier te staan." }));
+    main.appendChild(el("div", { class: "grid2" }, [c1, c2]));
+    if (!D) return;
+
+    var c3 = el("div", { class: "card" }, [el("div", { class: "cardhead" }, [el("h2", { text: "Omzet per maand 2026" }), el("span", { class: "muted small", text: "Facturen t/m " + dat(D.meta.factuurTot) + " · totaal " + eur(D.meta.factuurTotaal) + " excl. btw" })])]);
+    c3.appendChild(el("div", { class: "chart" }, [omzetChart(D.maanden)]));
+    var X = D.kansen || {};
+    var c4 = el("div", { class: "card" }, [el("h2", { text: "Bellijsten" }),
+      el("p", { class: "muted small", text: "Uit de analyses Omzetkansen 2026 en Opvolgacties klantcontacten. Maak vanuit een regel direct een taak." })]);
+    var ul = el("ul", { class: "list" });
+    BL.forEach(function (b) {
+      var rows = X[b.id] || [];
+      var mine = b.verkoper ? rows.filter(function (r) { return kingNaam(r.verkoper) === ik; }).length : null;
+      ul.appendChild(el("li", {}, [el("div", { class: "body" }, [el("a", { href: "#bellijsten", onclick: function () { st.blL = b.id; }, text: b.t }), el("span", { class: "meta", text: b.sub })]),
+        el("span", { class: "num" }, [String(rows.length), mine != null ? el("span", { class: "muted small", text: " · " + mine + " van jou" }) : null])]));
+    });
+    c4.appendChild(ul);
+    main.appendChild(el("div", { class: "grid2" }, [c3, c4]));
+    var info = el("div", { class: "bar small muted" }, [el("span", { text: "Klantgegevens: stand " + (D.meta.gebouwd || "onbekend") + (dataInfo && dataInfo.geupload ? " · geüpload " + dat(dataInfo.geupload) + (dataInfo.door ? " door " + dataInfo.door : "") : "") + " · " + D.klanten.length + " klanten en relaties" })]);
+    main.appendChild(info);
+  }
+  function tile(href, l, v, n, hot) { return el("a", { href: href, class: "tile" + (hot ? " hot" : "") }, [el("span", { class: "l", text: l }), el("span", { class: "v", text: String(v) }), el("span", { class: "n", text: n })]); }
+
+  function omzetChart(rows) {
+    var NS = "http://www.w3.org/2000/svg", W = 640, H = 230, L = 46, R = 8, T = 18, B = 26;
+    var max = Math.max.apply(null, rows.map(function (r) { return r[1]; }));
+    var stap = max > 400000 ? 100000 : 50000, top = Math.ceil(max / stap) * stap;
+    var svg = document.createElementNS(NS, "svg"); svg.setAttribute("viewBox", "0 0 " + W + " " + H); svg.setAttribute("role", "img");
+    svg.setAttribute("aria-label", "Omzet per maand 2026");
+    function a(tag, at, txt) { var n = document.createElementNS(NS, tag); for (var k in at) n.setAttribute(k, at[k]); if (txt != null) n.textContent = txt; svg.appendChild(n); return n; }
+    var y = function (v) { return T + (H - T - B) * (1 - v / top); };
+    for (var v = 0; v <= top; v += stap) {
+      a("line", { x1: L, x2: W - R, y1: y(v), y2: y(v), stroke: "var(--grid)", "stroke-width": 1 });
+      a("text", { x: L - 6, y: y(v) + 4, "text-anchor": "end" }, v === 0 ? "0" : (v / 1000) + "k");
+    }
+    var mn = ["jan", "feb", "mrt", "apr", "mei", "jun", "jul", "aug", "sep", "okt", "nov", "dec"];
+    var bw = (W - L - R) / 12;
+    rows.forEach(function (r) {
+      var m = Number(r[0].slice(5)) - 1, x = L + m * bw + bw * .18, w = bw * .64;
+      var partial = r[0] === D.meta.factuurTot.slice(0, 7) && Number(D.meta.factuurTot.slice(8)) < 25;
+      var rect = a("rect", { x: x, y: y(r[1]), width: w, height: Math.max(1, y(0) - y(r[1])), rx: 3, fill: "var(--bar)", opacity: partial ? .35 : 1 });
+      var tt = document.createElementNS(NS, "title"); tt.textContent = mn[m] + " 2026: " + eur(r[1]) + " · " + r[2] + " facturen" + (partial ? " (maand nog niet compleet in export)" : ""); rect.appendChild(tt);
+      if (!partial) a("text", { x: x + w / 2, y: y(r[1]) - 5, "text-anchor": "middle", class: "lbl-v" }, Math.round(r[1] / 1000) + "k");
+    });
+    mn.forEach(function (n, i) { a("text", { x: L + i * bw + bw / 2, y: H - 8, "text-anchor": "middle" }, n); });
+    return svg;
+  }
+
+  /* ================= taken ================= */
+  function takenLijst(rows, now, compact) {
+    var ul = el("ul", { class: "list" });
+    rows.forEach(function (t) {
+      var s = status(t, now), k = t.klantN ? KL[t.klantN] : null;
+      var meta = [];
+      if (!compact || t.voor !== ik) meta.push("voor " + (t.voor === ik ? "mij" : t.voor));
+      meta.push("van " + (t.door === ik ? "mij" : t.door) + ", " + dat(t.gemaakt));
+      if (s === "plan") meta.push("opvolgen " + datTijd(t.opvolgOp));
+      if (s === "klaar") meta.push("afgerond " + dat(t.afgerondOp) + (t.afgerondDoor && t.afgerondDoor !== t.voor ? " door " + t.afgerondDoor : ""));
+      var isSure = sure === t.id;
+      ul.appendChild(el("li", {}, [
+        statusPill(t, now),
+        el("div", { class: "body" }, [
+          el("span", {}, [t.klantN ? el("button", { type: "button", class: "klantlink", text: t.klantNaam || klantNaam(t.klantN) || ("Klant " + t.klantN), onclick: function () { openKlant(t.klantN); } }) : t.klantNaam ? el("b", { text: t.klantNaam }) : null,
+            t.klantN || t.klantNaam ? " · " : null, el("span", { text: t.titel })]),
+          t.notitie ? el("span", { class: "tekst small", text: t.notitie }) : null,
+          el("span", { class: "meta", text: meta.join(" · ") + (k && k.tel ? " · tel. " + k.tel : "") })
+        ]),
+        alleenLezen ? null : el("div", { class: "acts" }, [
+          s !== "klaar" ? el("button", { type: "button", class: "btn sm" + (s === "due" ? " pri" : ""), text: "Afhandelen", onclick: function () { openOpvolg(t, false); } }) : null,
+          !compact ? el("button", { type: "button", class: "btn sm danger" + (isSure ? " sure" : ""), text: isSure ? "Zeker?" : "Verwijderen", onclick: function () { verwijder(t); } }) : null
+        ])
+      ]));
+    });
+    return ul;
+  }
+  function verwijder(t) {
+    if (sure !== t.id) { sure = t.id; clearTimeout(sureTimer); sureTimer = setTimeout(function () { sure = null; render(); }, 4000); render(); return; }
+    sure = null; eenmaal(t.id, function () { return store.del("taken", t.id).then(function () { toast("Taak verwijderd."); }, fout); });
+  }
+  function viewTaken(main, now) {
+    main.appendChild(el("div", { class: "head" }, [el("h1", { text: "Taken" }),
+      el("p", { text: "Taken uitdelen en opvolgen. Als de opvolgdatum is verstreken, krijgt degene voor wie de taak is een pop-up met de vraag of het gedaan is. Wie het afvinkt als nagebeld, maakt daarmee automatisch een contactregistratie." })]));
+    var card = el("div", { class: "card" });
+    var bar = el("div", { class: "bar" });
+    [["mij", "Voor mij"], ["door", "Door mij uitgedeeld"], ["team", "Hele team"]].forEach(function (c) {
+      bar.appendChild(el("button", { type: "button", class: "chip" + (st.taken === c[0] ? " on" : ""), text: c[1], onclick: function () { st.taken = c[0]; render(); } }));
+    });
+    if (st.taken === "team") {
+      var sel = el("select", { id: "taken-wie", "aria-label": "Persoon", style: "width:auto", onchange: function () { st.takenWie = this.value; render(); } }, [el("option", { value: "", text: "Iedereen" })].concat(team.map(function (p) { return el("option", { value: p.naam, text: p.naam, selected: st.takenWie === p.naam }); })));
+      bar.appendChild(sel);
+    }
+    bar.appendChild(el("label", { class: "small", style: "display:flex;gap:6px;align-items:center;margin-left:6px" }, [el("input", { type: "checkbox", id: "taken-klaar", checked: st.takenKlaar, onchange: function () { st.takenKlaar = this.checked; render(); } }), "Afgeronde taken tonen"]));
+    bar.appendChild(el("span", { style: "flex:1" }));
+    if (!alleenLezen) bar.appendChild(el("button", { type: "button", class: "btn pri", text: "Nieuwe taak", onclick: function () { openTaakForm({}); } }));
+    card.appendChild(bar);
+    var rows = taken.filter(function (t) {
+      if (st.taken === "mij" && t.voor !== ik) return false;
+      if (st.taken === "door" && t.door !== ik) return false;
+      if (st.taken === "team" && st.takenWie && t.voor !== st.takenWie) return false;
+      if (!st.takenKlaar && t.status === "klaar") return false;
+      return true;
+    });
+    if (!loadedT) card.appendChild(el("p", { class: "empty", text: laadNoot || "Taken laden…" }));
+    else if (!rows.length) card.appendChild(el("p", { class: "empty", text: st.taken === "mij" ? "Geen open taken voor jou." : st.taken === "door" ? "Je hebt nog geen taken uitgedeeld." : "Geen taken gevonden." }));
+    else card.appendChild(takenLijst(sorteerTaken(rows, now), now, false));
+    main.appendChild(card);
+
+    if (st.taken === "team" || st.taken === "door") {
+      var c2 = el("div", { class: "card" }, [el("h2", { text: "Open taken per persoon" })]);
+      var tb = el("tbody");
+      team.forEach(function (p) {
+        var o = taken.filter(function (t) { return t.voor === p.naam && t.status !== "klaar"; });
+        var d = o.filter(function (t) { return status(t, now) === "due"; }).length;
+        var k = taken.filter(function (t) { return t.voor === p.naam && t.status === "klaar" && t.afgerondOp > now - 30 * DAG; }).length;
+        tb.appendChild(el("tr", {}, [el("td", { text: p.naam }), el("td", { text: p.rol, class: "muted" }), el("td", { class: "num", text: String(o.length) }),
+          el("td", { class: "num" }, [d ? el("span", { class: "pill due", text: String(d) }) : "0"]), el("td", { class: "num", text: String(k) })]));
+      });
+      c2.appendChild(el("div", { class: "tw" }, [el("table", {}, [el("thead", {}, [el("tr", {}, [el("th", { text: "Naam" }), el("th", { text: "Rol" }), el("th", { class: "num", text: "Open" }), el("th", { class: "num", text: "Nu opvolgen" }), el("th", { class: "num", text: "Klaar (30 dgn)" })])]), tb])]));
+      main.appendChild(c2);
+    }
+  }
+
+  /* ================= klanten ================= */
+  function zoekKlanten(q, max) {
+    q = (q || "").trim().toLowerCase(); if (!q) return [];
+    var res = [], isNum = /^\d+$/.test(q);
+    for (var i = 0; i < D.klanten.length && res.length < 400; i++) {
+      var k = D.klanten[i];
+      if (isNum ? String(k.n).indexOf(q) === 0 : ((k.naam || "") + " " + (k.naam2 || "") + " " + (k.plaats || "")).toLowerCase().indexOf(q) >= 0) res.push(k);
+    }
+    res.sort(function (a, b) { return (b.o26 || 0) - (a.o26 || 0); });
+    return res.slice(0, max || 50);
+  }
+  function viewKlanten(main) {
+    main.appendChild(el("div", { class: "head" }, [el("h1", { text: "Klanten" }),
+      el("p", { text: "Debiteuren uit de facturen (nummers 1200xxxx) en relaties van de buitendienst uit het KING-relatiebestand. Klik op een klant voor contactgegevens, contacthistorie en taken." })]));
+    var card = el("div", { class: "card" });
+    var inp = el("input", { type: "search", id: "kl-zoek", class: "search", placeholder: "Zoek op naam, plaats of nummer", value: st.klQ, oninput: function () { st.klQ = this.value; tekenTabel(); } });
+    var bar = el("div", { class: "bar" }, [inp]);
+    [["omzet", "Met omzet 2026"], ["rel", "Relaties buitendienst"], ["taak", "Met open taak"]].forEach(function (c) {
+      bar.appendChild(el("button", { type: "button", class: "chip" + (st.klF === c[0] ? " on" : ""), text: c[1], onclick: function () { st.klF = c[0]; render(); } }));
+    });
+    card.appendChild(bar);
+    var holder = el("div"); card.appendChild(holder);
+    main.appendChild(card);
+    function tekenTabel() {
+      holder.textContent = "";
+      var rows;
+      if (st.klQ.trim()) rows = zoekKlanten(st.klQ, 100);
+      else if (st.klF === "omzet") rows = D.klanten.filter(function (k) { return k.o26 > 0; }).sort(function (a, b) { return b.o26 - a.o26; }).slice(0, 100);
+      else if (st.klF === "rel") rows = D.klanten.filter(function (k) { return k.soort === "rel"; }).sort(function (a, b) { return ((KING[b.n] || []).length) - ((KING[a.n] || []).length); }).slice(0, 100);
+      else { var nrs = {}; taken.forEach(function (t) { if (t.klantN && t.status !== "klaar") nrs[t.klantN] = 1; }); rows = Object.keys(nrs).map(function (n) { return KL[n]; }).filter(Boolean); }
+      if (!rows.length) { holder.appendChild(el("p", { class: "empty", text: st.klQ ? "Geen klant gevonden met \"" + st.klQ + "\"." : "Geen klanten in deze selectie." })); return; }
+      var tb = el("tbody");
+      rows.forEach(function (k) {
+        var open = taken.filter(function (t) { return t.klantN === k.n && t.status !== "klaar"; }).length;
+        tb.appendChild(el("tr", { class: "click", onclick: function () { openKlant(k.n); } }, [
+          el("td", {}, [el("button", { type: "button", class: "klantlink", text: k.naam }), k.naam2 ? el("div", { class: "muted small", text: k.naam2 }) : null]),
+          el("td", { class: "muted", text: klantPlaats(k) }),
+          el("td", { text: k.soort === "deb" ? "Debiteur" : "Relatie" }),
+          el("td", { text: k.tel || "" }),
+          el("td", { class: "num", text: k.o26 ? eur(k.o26) : "" }),
+          el("td", { class: "num", text: k.o25 ? eur(k.o25) : "" }),
+          el("td", { class: "num", text: k.laatste ? dat(k.laatste) : "" }),
+          el("td", {}, [open ? el("span", { class: "pill plan", text: open + " taak" + (open > 1 ? "en" : "") }) : null])
+        ]));
+      });
+      holder.appendChild(el("p", { class: "muted small", text: rows.length + " klant" + (rows.length === 1 ? "" : "en") + (rows.length === 100 ? " (eerste 100; zoek om te verfijnen)" : "") }));
+      holder.appendChild(el("div", { class: "tw" }, [el("table", {}, [el("thead", {}, [el("tr", {}, ["Klant", "Plaats", "Soort", "Telefoon", "Omzet 2026", "Omzet 2025", "Laatste factuur", ""].map(function (h, i) { return el("th", { class: i >= 4 && i <= 6 ? "num" : null, text: h }); }))]), tb])]));
+    }
+    tekenTabel();
+  }
+
+  function openKlant(n) { drawerKlant = n; tekenDrawer(); }
+  function sluitDrawer() { drawerKlant = null; var d = $("drawer"); if (d) d.remove(); var s = $("drawer-scrim"); if (s) s.remove(); }
+  function tekenDrawer() {
+    var oud = $("drawer"), scroll = oud ? oud.scrollTop : 0;
+    if (oud) oud.remove(); var os = $("drawer-scrim"); if (os) os.remove();
+    var n = drawerKlant; if (n == null) return;
+    var k = KL[n], now = Date.now();
+    var dr = el("aside", { class: "drawer", id: "drawer", role: "dialog", "aria-label": "Klantkaart" });
+    dr.appendChild(el("div", { class: "cardhead" }, [el("div", {}, [el("h1", { text: k ? k.naam : "Klant " + n }), el("span", { class: "muted small", text: (k && k.soort === "deb" ? "Debiteur " : "Relatie ") + n + (k && k.type ? " · " + k.type : "") })]),
+      el("button", { type: "button", class: "x", "aria-label": "Sluiten", text: "×", onclick: sluitDrawer })]));
+    if (!alleenLezen) dr.appendChild(el("div", { class: "bar" }, [
+      el("button", { type: "button", class: "btn pri", text: "Taak maken", onclick: function () { openTaakForm({ klantN: n }); } }),
+      el("button", { type: "button", class: "btn", text: "Contact registreren", onclick: function () { openContactForm(n); } })]));
+    if (k) {
+      var kv = el("dl", { class: "kv" });
+      function rij(a, b) { if (b) kv.append(el("dt", { text: a }), el("dd", { text: b })); }
+      rij("Tweede naam", k.naam2); rij("Adres", [k.adres, [k.pc, k.plaats].filter(Boolean).join(" ")].filter(Boolean).join(", ")); rij("Telefoon", [k.tel, k.tel2].filter(Boolean).join(" / "));
+      rij("E-mail", k.email); rij("Omzet 2026", k.o26 ? eur(k.o26) + " (" + k.f26 + " facturen)" : ""); rij("Omzet 2025", k.o25 ? eur(k.o25) : ""); rij("Laatste factuur", k.laatste ? dat(k.laatste) : "");
+      dr.appendChild(el("div", { class: "card" }, [kv.childNodes.length ? kv : el("p", { class: "empty", text: "Geen adres- of contactgegevens bekend." }),
+        k.soort === "deb" ? el("p", { class: "muted small", text: "Debiteuren en buitendienst-relaties zijn in KING aparte bestanden; daarom staan bij debiteuren vaak geen telefoon of e-mail." }) : null]));
+    }
+    var w = WHY[n] || [];
+    if (w.length) {
+      var wc = el("div", { class: "card" }, [el("h2", { text: "Waarom bellen" })]);
+      w.forEach(function (x) { wc.appendChild(el("div", { class: "why" }, [el("h3", { text: x[0] }), el("p", { class: "tekst small", text: x[1] })])); });
+      dr.appendChild(wc);
+    }
+    var kt = sorteerTaken(taken.filter(function (t) { return t.klantN === n; }), now);
+    var tc = el("div", { class: "card" }, [el("h2", { text: "Taken" })]);
+    tc.appendChild(kt.length ? takenLijst(kt, now, false) : el("p", { class: "empty", text: "Geen taken voor deze klant." }));
+    dr.appendChild(tc);
+    var hist = contacten.filter(function (c) { return c.klantN === n; }).map(function (c) { return { tijd: c.tijd, datum: c.datum, soort: c.soort, wie: c.wie, tekst: c.tekst, nieuw: true }; })
+      .concat((KING[n] || []).map(function (c) { return { tijd: new Date(c[1] + "T12:00:00").getTime(), datum: c[1], soort: c[2], wie: kingNaam(c[3]), tekst: c[4], nieuw: false }; }))
+      .sort(function (a, b) { return b.tijd - a.tijd; });
+    var hc = el("div", { class: "card" }, [el("h2", { text: "Contacthistorie" })]);
+    if (!hist.length) hc.appendChild(el("p", { class: "empty", text: "Nog geen contacten geregistreerd." }));
+    else {
+      var ul = el("ul", { class: "list" });
+      hist.slice(0, 40).forEach(function (h) {
+        ul.appendChild(el("li", {}, [el("div", { class: "body" }, [
+          el("span", {}, [el("b", { text: h.soort }), " · " + h.wie + " · " + (h.nieuw ? datTijd(h.tijd) : dat(h.datum)) + " ", h.nieuw ? el("span", { class: "pill klaar", text: "dashboard" }) : el("span", { class: "pill grey", text: "KING" })]),
+          h.tekst ? el("span", { class: "tekst small", text: h.tekst }) : null])]));
+      });
+      hc.appendChild(ul);
+      if (hist.length > 40) hc.appendChild(el("p", { class: "muted small", text: "De " + (hist.length - 40) + " oudste contacten staan niet in deze lijst." }));
+    }
+    dr.appendChild(hc);
+    var scrim = el("div", { class: "drawer-scrim", id: "drawer-scrim", onclick: sluitDrawer });
+    $("layer").append(scrim, dr);
+    dr.scrollTop = scroll;
+  }
+
+  /* ================= bellijsten ================= */
+  function kol(t, f, cls) { return { t: t, f: f, cls: cls }; }
+  var BL = [
+    { id: "prio", t: "Bellijst prio", sub: "Beoordeeld uit de contactnotities", verkoper: true, taak: function (r) { return r.actie || "Bellen: " + r.thema; },
+      cols: [kol("Prio", function (r) { return el("span", { class: "pill " + (/^1/.test(r.prio) ? "p1" : "grey"), text: r.prio }); }), kol("Thema", function (r) { return r.thema; }), kol("Waarom", function (r) { return r.waarom; }, "wrap"), kol("Actie", function (r) { return r.actie; }, "wrap"), kol("Verkoper", function (r) { return kingNaam(r.verkoper); }), kol("Laatste contact", function (r) { return dat(r.laatste); })] },
+    { id: "opvolg", t: "Opvolgacties", sub: "Toezeggingen uit het laatste klantcontact", verkoper: true, taak: function (r) { return r.actie; },
+      cols: [kol("Actie", function (r) { return r.actie; }), kol("Vóór", function (r) { var late = new Date(r.voor + "T23:59:59") < new Date(); return el("span", { class: late ? "pill due" : "", text: dat(r.voor) }); }), kol("Notitie", function (r) { return r.notitie; }, "wrap"), kol("Verkoper", function (r) { return kingNaam(r.verkoper); })] },
+    { id: "bellijst", t: "Vallen stil", sub: "Minder omzet dan vorig jaar", taak: function () { return "Bellen: bestelt minder dan vorig jaar"; },
+      cols: [kol("Type", function (r) { return r.type; }), kol("2025 t/m okt", function (r) { return eur(r.ytd25); }, "num"), kol("2026 t/m okt", function (r) { return eur(r.ytd26); }, "num"), kol("Verschil", function (r) { return eur(r.verschil); }, "num"), kol("Signaal", function (r) { return r.signaal; }, "wrap"), kol("Laatste factuur", function (r) { return dat(r.laatste); })] },
+    { id: "offertes", t: "Open offertes", sub: "Nog niet besteld", taak: function (r) { return "Offerte " + r.nr + " nabellen"; },
+      cols: [kol("Offerte", function (r) { return r.nr; }), kol("Datum", function (r) { return dat(r.datum); }), kol("Waarde", function (r) { return eur(r.waarde); }, "num"), kol("Artikelen", function (r) { return r.artikelen; }, "wrap"), kol("Status", function (r) { return r.status; })] },
+    { id: "tweede", t: "Nieuwe klanten, 2e order", sub: "Kwamen na de eerste order niet terug", taak: function () { return "Bellen: tweede order na eerste bestelling"; },
+      cols: [kol("Type", function (r) { return r.type; }), kol("Eerste order", function (r) { return dat(r.eerste); }), kol("Facturen", function (r) { return r.facturen; }, "num"), kol("Omzet", function (r) { return eur(r.omzet); }, "num")] },
+    { id: "winter", t: "Winter", sub: "Strooizout en winterartikelen", taak: function () { return "Bellen: winterartikelen / strooizout aanbieden"; },
+      cols: [kol("Type", function (r) { return r.type; }), kol("Omzet 2025", function (r) { return eur(r.o25); }, "num"), kol("Strooizout eerder", function (r) { return r.zout ? eur(r.zout) : "nee"; }, "num")] },
+    { id: "werven", t: "Werven", sub: "Gestopte vestigingen en oud-klanten", taak: function () { return "Bellen: opnieuw benaderen"; },
+      cols: [kol("Soort", function (r) { return r.soort; }), kol("Beste jaar", function (r) { return r.bestejaar; }), kol("Omzet toen", function (r) { return eur(r.omzet); }, "num"), kol("Laatste factuur", function (r) { return dat(r.laatste); })] },
+    { id: "bijverkoop", t: "Bijverkoop", sub: "Wat vergelijkbare klanten wel kopen", taak: function (r) { return "Bijverkoop aanbieden: " + r.top3; },
+      cols: [kol("Type", function (r) { return r.type; }), kol("Omzet 2025", function (r) { return eur(r.o25); }, "num"), kol("Potentie/jaar", function (r) { return eur(r.potentie); }, "num"), kol("Top 3", function (r) { return r.top3; }, "wrap")] },
+    { id: "winkels", t: "Welkoop & Hubo", sub: "Per winkel wat ze kopen en missen", taak: function (r) { return "Winkel bellen: " + (r.mist || "assortiment bespreken"); },
+      cols: [kol("Keten", function (r) { return r.keten; }), kol("Omzet 2026", function (r) { return eur(r.o26); }, "num"), kol("Koopt", function (r) { return r.koopt; }, "wrap"), kol("Mist", function (r) { return r.mist; }, "wrap")] }
+  ];
+  function viewBellijsten(main) {
+    var b = BL.filter(function (x) { return x.id === st.blL; })[0] || BL[0];
+    main.appendChild(el("div", { class: "head" }, [el("h1", { text: "Bellijsten" }),
+      el("p", { text: "Lijsten uit Omzetkansen 2026.xlsx en Opvolgacties_klantcontacten.xlsx (stand " + dat(D.meta.bronnen.filter(function (x) { return /Omzetkansen/.test(x.naam); }).map(function (x) { return x.datum.slice(0, 10); })[0]) + "). Met \"Taak\" zet je een regel als taak op iemands lijst." })]));
+    var card = el("div", { class: "card" });
+    var bar = el("div", { class: "bar" });
+    BL.forEach(function (x) { bar.appendChild(el("button", { type: "button", class: "chip" + (x.id === b.id ? " on" : ""), onclick: function () { st.blL = x.id; render(); } }, [x.t + " ", el("span", { class: x.id === b.id ? "" : "muted", text: String((D.kansen[x.id] || []).length) })])); });
+    card.appendChild(bar);
+    var rows = (D.kansen[b.id] || []).slice();
+    if (b.verkoper) {
+      card.appendChild(el("label", { class: "small", style: "display:flex;gap:6px;align-items:center" }, [el("input", { type: "checkbox", id: "bl-mij", checked: st.blMij, onchange: function () { st.blMij = this.checked; render(); } }), "Alleen relaties van mij (" + ik + ")"]));
+      if (st.blMij) rows = rows.filter(function (r) { return kingNaam(r.verkoper) === ik; });
+    }
+    card.appendChild(el("p", { class: "muted small", text: b.sub + " · " + rows.length + " regels" }));
+    if (!rows.length) card.appendChild(el("p", { class: "empty", text: b.verkoper && st.blMij ? "Geen regels op jouw naam. Zet het vinkje uit om alle regels te zien." : "Geen regels." }));
+    else {
+      var tb = el("tbody");
+      rows.forEach(function (r) {
+        var k = KL[r.k];
+        var open = taken.some(function (t) { return t.klantN === r.k && t.status !== "klaar"; });
+        tb.appendChild(el("tr", {}, [
+          el("td", {}, [el("button", { type: "button", class: "klantlink", text: r.naam || (k && k.naam) || String(r.k), onclick: function () { openKlant(r.k); } }), el("div", { class: "muted small", text: [r.plaats || klantPlaats(k), r.tel || (k && k.tel)].filter(Boolean).join(" · ") })])
+        ].concat(b.cols.map(function (c) { var v = c.f(r); return el("td", { class: c.cls || null }, [v == null ? "" : v]); }))
+          .concat([el("td", {}, [open ? el("span", { class: "pill plan", text: "taak loopt" }) : alleenLezen ? null : el("button", { type: "button", class: "btn sm", text: "Taak", onclick: function () { openTaakForm({ klantN: r.k, titel: b.taak(r), voor: b.verkoper ? kingNaam(r.verkoper) : null }); } })])])));
+      });
+      card.appendChild(el("div", { class: "tw" }, [el("table", {}, [el("thead", {}, [el("tr", {}, [el("th", { text: "Klant" })].concat(b.cols.map(function (c) { return el("th", { class: c.cls === "num" ? "num" : null, text: c.t }); })).concat([el("th")]))]), tb])]));
+    }
+    main.appendChild(card);
+  }
+
+  /* ================= contacten ================= */
+  function contactLijst(rows) {
+    var ul = el("ul", { class: "list" });
+    rows.forEach(function (c) {
+      ul.appendChild(el("li", {}, [el("div", { class: "body" }, [
+        el("span", {}, [c.klantN ? el("button", { type: "button", class: "klantlink", text: c.klantNaam || klantNaam(c.klantN) || String(c.klantN), onclick: function () { openKlant(c.klantN); } }) : el("b", { text: c.klantNaam || "Zonder klant" })]),
+        el("span", { class: "meta", text: c.soort + " · " + c.wie + " · " + geleden(c.tijd) }),
+        c.tekst ? el("span", { class: "tekst small", text: c.tekst }) : null])]));
+    });
+    return ul;
+  }
+  function viewContacten(main) {
+    main.appendChild(el("div", { class: "head" }, [el("h1", { text: "Contactregistratie" }),
+      el("p", { text: "Alle contacten die in dit dashboard zijn vastgelegd, nieuwste eerst. De oudere historie uit KING staat per klant op de klantkaart. Deze registraties staan niet automatisch in KING." })]));
+    var card = el("div", { class: "card" });
+    var bar = el("div", { class: "bar" });
+    [""].concat(team.map(function (p) { return p.naam; })).forEach(function (n) {
+      bar.appendChild(el("button", { type: "button", class: "chip" + (st.ctWie === n ? " on" : ""), text: n || "Iedereen", onclick: function () { st.ctWie = n; render(); } }));
+    });
+    if (!alleenLezen) { bar.appendChild(el("span", { style: "flex:1" })); bar.appendChild(el("button", { type: "button", class: "btn pri", text: "Contact registreren", onclick: function () { openContactForm(null); } })); }
+    card.appendChild(bar);
+    var rows = contacten.filter(function (c) { return !st.ctWie || c.wie === st.ctWie; }).sort(function (a, b) { return b.tijd - a.tijd; });
+    if (!loadedC) card.appendChild(el("p", { class: "empty", text: laadNoot || "Laden…" }));
+    else card.appendChild(rows.length ? contactLijst(rows.slice(0, 200)) : el("p", { class: "empty", text: "Nog geen contactregistraties." }));
+    main.appendChild(card);
+  }
+
+  /* ================= dialogen ================= */
+  function dialoog(kids, opts) {
+    sluitDialoog();
+    var dlg = el("div", { class: "dialog pop", role: "dialog", "aria-modal": "true", "aria-labelledby": "dlg-titel" }, kids);
+    var scrim = el("div", { class: "scrim", id: "dlg", onclick: function (e) { if (e.target === scrim && !(opts && opts.vast)) sluitDialoog(); } }, [dlg]);
+    $("layer").appendChild(scrim);
+    setTimeout(function () { var f = dlg.querySelector("[data-focus]") || dlg.querySelector("input,textarea,select,button"); if (f) f.focus(); }, 30);
+    return dlg;
+  }
+  function sluitDialoog() { var d = $("dlg"); if (d) d.remove(); popupOpen = null; }
+  document.addEventListener("keydown", function (e) {
+    if (e.key !== "Escape") return;
+    if ($("dlg")) { if (popupOpen) uitgesteld[popupOpen] = Date.now() + 10 * MIN; sluitDialoog(); }
+    else if (drawerKlant != null) sluitDrawer();
+  });
+  function intervalKeuze(naam, standaard, metKlaar) {
+    var box = el("div", { class: "opts" });
+    if (metKlaar) box.appendChild(el("label", { class: "opt" }, [el("input", { type: "radio", name: naam, value: "klaar", checked: standaard === "klaar" }), "Klaar, niet meer opvolgen"]));
+    INTERVALLEN.forEach(function (iv) { box.appendChild(el("label", { class: "opt" }, [el("input", { type: "radio", name: naam, value: iv[0], checked: standaard === iv[0] }), iv[1]])); });
+    return box;
+  }
+  function gekozenInterval(dlg, naam) { var c = dlg.querySelector('input[name="' + naam + '"]:checked'); if (!c) return null; if (c.value === "klaar") return "klaar"; return INTERVALLEN.filter(function (iv) { return iv[0] === c.value; })[0][2]; }
+
+  function klantKiezer(startN) {
+    var gekozen = startN || null;
+    var wrap = el("div", { class: "field" }, [el("label", { for: "kk-zoek", text: "Klant" })]);
+    var box = el("div");
+    wrap.appendChild(box);
+    if (!D) {
+      var vrij = el("input", { type: "text", id: "kk-naam", maxlength: 120, placeholder: "Naam van de klant (mag leeg)", autocomplete: "off", "data-focus": true });
+      wrap.firstChild.setAttribute("for", "kk-naam");
+      box.appendChild(vrij);
+      return { el: wrap, waarde: function () { return null; }, naam: function () { return vrij.value.trim(); } };
+    }
+    function teken() {
+      box.textContent = "";
+      if (gekozen) {
+        var k = KL[gekozen];
+        box.appendChild(el("div", { class: "gekozen" }, [el("span", { text: (k ? k.naam : gekozen) + (k && klantPlaats(k) ? " · " + klantPlaats(k) : "") }), el("button", { type: "button", class: "btn sm", text: "Andere klant", onclick: function () { gekozen = null; teken(); setTimeout(function () { $("kk-zoek").focus(); }, 0); } })]));
+        return;
+      }
+      var lijst = el("ul", { class: "ac", hidden: true, role: "listbox" }), act = -1, res = [];
+      var inp = el("input", { type: "search", id: "kk-zoek", placeholder: "Zoek op naam, plaats of nummer (mag leeg)", autocomplete: "off", "data-focus": true,
+        oninput: function () { res = zoekKlanten(this.value, 8); act = -1; tekenLijst(); },
+        onkeydown: function (e) {
+          if (e.key === "ArrowDown") { act = Math.min(res.length - 1, act + 1); tekenLijst(); e.preventDefault(); }
+          else if (e.key === "ArrowUp") { act = Math.max(0, act - 1); tekenLijst(); e.preventDefault(); }
+          else if (e.key === "Enter" && act >= 0) { e.preventDefault(); kies(res[act].n); }
+        } });
+      function kies(n) { gekozen = n; teken(); }
+      function tekenLijst() {
+        lijst.textContent = ""; lijst.hidden = !res.length;
+        res.forEach(function (k, i) { lijst.appendChild(el("li", { class: i === act ? "on" : "", role: "option", onmousedown: function (e) { e.preventDefault(); kies(k.n); } }, [el("span", { text: k.naam }), el("small", { text: [klantPlaats(k), k.soort === "deb" ? "deb." : "rel.", k.n].filter(Boolean).join(" · ") })])); });
+      }
+      box.append(inp, lijst);
+    }
+    teken();
+    return { el: wrap, waarde: function () { return gekozen; }, naam: function () { return ""; } };
+  }
+
+  function openTaakForm(pre) {
+    var kk = klantKiezer(pre.klantN);
+    var voorSel = el("select", { id: "tf-voor" }, team.map(function (p) { return el("option", { value: p.naam, text: p.naam + (p.naam === ik ? " (ik)" : ""), selected: (pre.voor || ik) === p.naam }); }));
+    var titel = el("input", { type: "text", id: "tf-titel", maxlength: 160, value: pre.titel || "", placeholder: "Bijv. Prijslijst toegestuurd, nabellen of hij interesse heeft" });
+    var notitie = el("textarea", { id: "tf-notitie", maxlength: 1000, placeholder: "Wat is er al gebeurd of afgesproken?" });
+    var err = el("p", { class: "err", hidden: true });
+    var btn = el("button", { type: "button", class: "btn pri", text: "Taak opslaan" });
+    var dlg = dialoog([
+      el("div", { class: "kop" }, [el("h2", { id: "dlg-titel", text: "Nieuwe taak" }), el("button", { type: "button", class: "x", "aria-label": "Sluiten", text: "×", onclick: sluitDialoog })]),
+      el("div", { class: "formgrid" }, [
+        el("div", { class: "wide" }, [kk.el]),
+        el("div", { class: "field wide" }, [el("label", { for: "tf-titel", text: "Wat moet er gebeuren" }), titel]),
+        el("div", { class: "field wide" }, [el("label", { for: "tf-notitie", text: "Opmerking" }), notitie]),
+        el("div", { class: "field" }, [el("label", { for: "tf-voor", text: "Voor wie" }), voorSel]),
+        el("div", { class: "field wide" }, [el("span", { class: "lbl", text: "Wanneer opvolgen" }), intervalKeuze("tf-iv", "1week", false),
+          el("span", { class: "muted small", text: "Op dat moment krijgt de gekozen persoon een pop-up: is het gedaan?" })])
+      ]),
+      err,
+      el("div", { class: "foot" }, [el("button", { type: "button", class: "btn", text: "Annuleren", onclick: sluitDialoog }), btn])
+    ]);
+    if (pre.titel) setTimeout(function () { notitie.focus(); }, 40);
+    btn.addEventListener("click", function () {
+      err.hidden = true;
+      var t = titel.value.trim();
+      if (!t) { err.textContent = "Vul in wat er moet gebeuren."; err.hidden = false; titel.focus(); return; }
+      btn.disabled = true;
+      var voor = voorSel.value;
+      maakTaak({ klantN: kk.waarde(), klantNaam: kk.naam(), titel: t, notitie: notitie.value.trim(), voor: voor, interval: gekozenInterval(dlg, "tf-iv") }).then(function () {
+        sluitDialoog(); toast(voor === ik ? "Taak staat op je lijst." : "Taak uitgedeeld aan " + voor + ".");
+      }, function () { btn.disabled = false; });
+    });
+  }
+
+  function openContactForm(n) {
+    var kk = klantKiezer(n);
+    var soort = el("div", { class: "opts" }, ["Telefoon", "Bezoek", "E-mail"].map(function (s, i) { return el("label", { class: "opt" }, [el("input", { type: "radio", name: "cf-soort", value: s, checked: i === 0 }), s]); }));
+    var tekst = el("textarea", { id: "cf-tekst", maxlength: 2000, placeholder: "Wat is er besproken?" });
+    var err = el("p", { class: "err", hidden: true });
+    var btn = el("button", { type: "button", class: "btn pri", text: "Registreren" });
+    var dlg = dialoog([
+      el("div", { class: "kop" }, [el("h2", { id: "dlg-titel", text: "Contact registreren" }), el("button", { type: "button", class: "x", "aria-label": "Sluiten", text: "×", onclick: sluitDialoog })]),
+      kk.el,
+      el("div", { class: "field" }, [el("span", { class: "lbl", text: "Soort contact" }), soort]),
+      el("div", { class: "field" }, [el("label", { for: "cf-tekst", text: "Verslag" }), tekst]),
+      err,
+      el("div", { class: "foot" }, [el("button", { type: "button", class: "btn", text: "Annuleren", onclick: sluitDialoog }), btn])
+    ]);
+    btn.addEventListener("click", function () {
+      err.hidden = true;
+      if (!kk.waarde() && !kk.naam()) { err.textContent = D ? "Kies een klant." : "Vul de naam van de klant in."; err.hidden = false; return; }
+      if (!tekst.value.trim()) { err.textContent = "Schrijf kort wat er besproken is."; err.hidden = false; tekst.focus(); return; }
+      btn.disabled = true;
+      registreer({ klantN: kk.waarde(), klantNaam: kk.naam(), soort: dlg.querySelector('input[name="cf-soort"]:checked').value, tekst: tekst.value.trim() }).then(function () { sluitDialoog(); toast("Contact geregistreerd."); }, function () { btn.disabled = false; });
+    });
+  }
+
+  /* De opvolg-pop-up: verschijnt vanzelf als een taak van jou verstreken is. */
+  function openOpvolg(t, automatisch) {
+    popupOpen = t.id;
+    var k = t.klantN ? KL[t.klantN] : null;
+    var nagebeld = el("input", { type: "checkbox", id: "op-gedaan", "data-focus": true });
+    var soort = el("div", { class: "opts" }, ["Telefoon", "Bezoek", "E-mail"].map(function (s, i) { return el("label", { class: "opt" }, [el("input", { type: "radio", name: "op-soort", value: s, checked: i === 0 }), s]); }));
+    var opm = el("textarea", { id: "op-opm", maxlength: 2000, placeholder: "Wat is er besproken? Dit komt in de contactregistratie." });
+    var err = el("p", { class: "err", hidden: true });
+    var btn = el("button", { type: "button", class: "btn pri", text: "Opslaan" });
+    var soortVeld = el("div", { class: "field" }, [el("span", { class: "lbl", text: "Hoe" }), soort]);
+    var log = (t.log || []).slice(-3);
+    var dlg = dialoog([
+      el("div", { class: "kop" }, [el("div", {}, [el("div", { class: "eyebrow", text: automatisch ? "Opvolgen" : "Taak afhandelen" }), el("h2", { id: "dlg-titel", text: k || t.klantNaam ? "Heb je " + (k ? k.naam : t.klantNaam) + " nagebeld?" : "Heb je dit gedaan?" })]),
+        el("button", { type: "button", class: "x", "aria-label": "Later", text: "×", onclick: later })]),
+      el("div", { class: "taakbox" }, [el("b", { text: t.titel }), t.notitie ? el("span", { class: "tekst small", text: t.notitie }) : null,
+        el("span", { class: "muted small", text: "Taak van " + (t.door === ik ? "jezelf" : t.door) + " · " + dat(t.gemaakt) + (k && k.tel ? " · tel. " + k.tel : "") }),
+        log.length ? el("span", { class: "muted small", text: log.map(function (l) { return dat(l.t) + ": " + l.tekst; }).join("\n") }) : null]),
+      el("label", { class: "check", for: "op-gedaan" }, [nagebeld, k || t.klantNaam ? "Ja, ik heb nagebeld" : "Ja, gedaan"]),
+      soortVeld,
+      el("div", { class: "field" }, [el("label", { for: "op-opm", text: "Opmerking" }), opm]),
+      el("div", { class: "field" }, [el("span", { class: "lbl", text: "Daarna" }), intervalKeuze("op-iv", "klaar", true)]),
+      err,
+      el("div", { class: "foot" }, [
+        k ? el("button", { type: "button", class: "btn left", text: "Klantkaart", onclick: function () { later(); openKlant(t.klantN); } }) : null,
+        el("button", { type: "button", class: "btn", text: "Later herinneren", onclick: later }), btn])
+    ], { vast: true });
+    function syncSoort() { soortVeld.hidden = !nagebeld.checked; }
+    nagebeld.addEventListener("change", syncSoort); syncSoort();
+    function later() { uitgesteld[t.id] = Date.now() + 10 * MIN; sluitDialoog(); if (automatisch) toast("Je krijgt over 10 minuten opnieuw een herinnering."); setTimeout(checkPopup, 400); }
+    btn.addEventListener("click", function () {
+      err.hidden = true;
+      var iv = gekozenInterval(dlg, "op-iv"), gedaan = nagebeld.checked, tekst = opm.value.trim(), now = Date.now();
+      if (!gedaan && iv === "klaar") { err.textContent = "Vink aan dat je hebt nagebeld, of kies wanneer je opnieuw herinnerd wilt worden."; err.hidden = false; return; }
+      btn.disabled = true;
+      var regel = { t: now, wie: ik, tekst: (gedaan ? "Nagebeld" : "Nog niet gelukt") + (tekst ? ": " + tekst : "") };
+      var patch = { log: (t.log || []).concat([regel]).slice(-20) };
+      if (iv === "klaar") { patch.status = "klaar"; patch.afgerondOp = now; patch.afgerondDoor = ik; }
+      else patch.opvolgOp = now + iv;
+      eenmaal(t.id, function () {
+        var p = gedaan ? registreer({ klantN: t.klantN, klantNaam: t.klantNaam, soort: dlg.querySelector('input[name="op-soort"]:checked').value, tekst: "Nagebeld n.a.v. taak \"" + t.titel + "\"" + (tekst ? ": " + tekst : ""), taakId: t.id }) : Promise.resolve();
+        return p.then(function () { return store.upd("taken", t.id, patch).catch(fout); }).then(function () {
+          delete uitgesteld[t.id]; sluitDialoog();
+          toast(gedaan ? (iv === "klaar" ? "Contact geregistreerd, taak afgerond." : "Contact geregistreerd, volgende opvolging " + over(iv) + ".") : "Herinnering verzet naar " + over(iv) + ".");
+          setTimeout(checkPopup, 600);
+        }, function () { btn.disabled = false; });
+      });
+    });
+  }
+  function checkPopup() {
+    if (!ik || alleenLezen || !loadedT || $("dlg")) return;
+    var now = Date.now();
+    var t = mijnDue(now).filter(function (x) { return !(uitgesteld[x.id] > now); })[0];
+    if (t) openOpvolg(t, true);
+  }
+
+  /* ================= render ================= */
+  var laadNoot = "", lastSig = "";
+  function sig(now) { return taken.map(function (t) { return t.id + status(t, now); }).join("|"); }
+  function render() {
+    var now = Date.now(), main = $("main");
+    var y = window.scrollY, foc = document.activeElement && document.activeElement.id, sel = foc && document.activeElement.selectionStart;
+    main.textContent = "";
+    renderNav(now);
+    if (alleenLezen && !lokaal) main.appendChild(el("div", { class: "banner", text: "Je kijkt mee. Taken uitdelen en afvinken kan alleen met het deelniveau Contributor of hoger." }));
+    else if (laadNoot && (loadedT || loadedC)) main.appendChild(el("div", { class: "banner", text: laadNoot }));
+    if (!ik) { viewLogin(main); return; }
+    var r = route();
+    if (!D && (r === "klanten" || r === "bellijsten")) r = "overzicht";
+    if (r === "taken") viewTaken(main, now);
+    else if (r === "klanten") viewKlanten(main);
+    else if (r === "bellijsten") viewBellijsten(main);
+    else if (r === "contacten") viewContacten(main);
+    else viewOverzicht(main, now);
+    window.scrollTo(0, y);
+    if (foc && $(foc)) { var f = $(foc); f.focus(); try { if (sel != null) f.setSelectionRange(sel, sel); } catch (e) {} }
+    if (drawerKlant != null) tekenDrawer();
+    lastSig = sig(now);
+  }
+  window.addEventListener("hashchange", function () { sluitDrawer(); render(); window.scrollTo(0, 0); });
+  setInterval(function () {
+    var now = Date.now();
+    if (sig(now) !== lastSig) { render(); checkPopup(); return; }
+    document.querySelectorAll("[data-due]").forEach(function (n) { n.textContent = over(Number(n.getAttribute("data-due")) - now); });
+    checkPopup();
+  }, 1000);
+  render();
+
+  /* ================= klantgegevens (data.json als asset) ================= */
+  var assetsNs = null, dataInfo = null, dataStatus = "wacht", uploadBezig = false;
+  function zetData(d) {
+    if (!d || !Array.isArray(d.klanten) || !d.kansen || !d.meta) throw new Error("vorm");
+    D = d; KL = {}; KING = {}; WHY = {}; bouwIndex(); dataStatus = "ok"; render(); checkPopup();
+  }
+  function laadData(info) {
+    dataInfo = info;
+    if (!info || !info.assetId) { if (!D) dataStatus = "geen"; render(); return; }
+    if (D && D._assetId === info.assetId) return;
+    if (!D) { dataStatus = "laden"; render(); }
+    fetch("/_blob/" + info.assetId).then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); })
+      .then(function (d) { d._assetId = info.assetId; zetData(d); })
+      .catch(function () { if (!D) { dataStatus = "fout"; render(); } });
+  }
+  function uploadData(file) {
+    if (uploadBezig) return; uploadBezig = true; toast("Klantgegevens uploaden…");
+    file.text().then(function (txt) {
+      var d = JSON.parse(txt);
+      if (!d || !Array.isArray(d.klanten) || !d.kansen || !d.meta) throw { code: "vorm" };
+      if (lokaal) { zetData(d); toast("Klantgegevens geladen (alleen in deze browser)."); return; }
+      var oud = dataInfo && dataInfo.assetId;
+      return assetsNs.upload(new Blob([txt], { type: "application/json" }), { type: "application/json" }).then(function (res) {
+        return store.setDoc("config/data", { assetId: res.id, geupload: Date.now(), door: ik, bestand: file.name, stand: d.meta.gebouwd || "", klanten: d.klanten.length });
+      }).then(function () {
+        toast("Klantgegevens bijgewerkt voor het hele team.");
+        if (oud) assetsNs.delete(oud).catch(function () {});
+      });
+    }).catch(function (e) {
+      toast(e && e.code === "vorm" || e instanceof SyntaxError ? "Dit is niet het juiste bestand. Kies data.json uit de map MA Dashboard\\team." : e && e.code === "too_large" ? "Het bestand is te groot (max. 20 MB)." : "Uploaden lukte niet. Probeer het opnieuw.");
+    }).then(function () { uploadBezig = false; });
+  }
+  function dataPicker(tekst) {
+    var inp = el("input", { type: "file", id: "data-file", accept: ".json,application/json", style: "position:absolute;opacity:0;width:1px;height:1px", onchange: function () { if (this.files && this.files[0]) uploadData(this.files[0]); this.value = ""; } });
+    return el("label", { class: "btn pri", for: "data-file" }, [tekst, inp]);
+  }
+  function kanUploaden() { return lokaal || !!assetsNs; }
+  function viewSetup(main) {
+    var card = el("div", { class: "card login" });
+    if (dataStatus === "wacht" || dataStatus === "laden") { card.appendChild(el("p", { class: "muted", text: "Klantgegevens laden…" })); main.appendChild(card); return; }
+    card.appendChild(el("h1", { text: dataStatus === "fout" ? "Klantgegevens niet gevonden" : "Klantgegevens toevoegen" }));
+    if (kanUploaden()) {
+      card.appendChild(el("p", { text: "Het dashboard heeft het bestand data.json nodig met klanten, contacthistorie en bellijsten. Het staat in de map MA Dashboard\\team op je pc. Na het uploaden ziet iedereen met toegang tot dit dashboard dezelfde gegevens." }));
+      card.appendChild(el("p", { class: "muted small", text: "Er zitten geen kostprijzen, inkoopprijzen of marges in." }));
+      card.appendChild(el("div", { class: "bar" }, [dataPicker("data.json kiezen en uploaden")]));
+    } else {
+      card.appendChild(el("p", { text: dataStatus === "fout" ? "De klantgegevens konden niet geladen worden. Vernieuw de pagina; lukt het dan nog niet, vraag Huib de gegevens opnieuw te uploaden." : "De klantgegevens zijn nog niet geüpload. Vraag Huib om dat te doen; daarna verschijnt hier het dashboard." }));
+    }
+    main.appendChild(card);
+  }
+  function onTaken(list, fromCache) { taken = list.filter(function (t) { return t && typeof t.opvolgOp === "number" && t.voor; }); loadedT = true; if (!fromCache) laadKlaar(); render(); checkPopup(); }
+  function onContacten(list, fromCache) { contacten = list.filter(function (c) { return c && typeof c.tijd === "number"; }); loadedC = true; if (!fromCache) laadKlaar(); render(); }
+  var laadTimer = setTimeout(function () { if (lokaal) return; laadNoot = loadedT ? "De gegevens zijn mogelijk niet actueel; de verbinding hapert." : "Taken en contacten zijn nog niet bereikbaar. Ze verschijnen zodra de verbinding er is."; render(); }, 10000);
+  function laadKlaar() { if (loadedT && loadedC) { clearTimeout(laadTimer); laadNoot = ""; } }
+  function startLokaal() {
+    lokaal = true; clearTimeout(laadTimer); store = localStore();
+    try { var n = localStorage.getItem(LS_NAAM); if (n) ik = n; } catch (e) {}
+    store.sub("taken", onTaken); store.sub("contacten", onContacten);
+  }
+  function dbFout(e) {
+    clearTimeout(laadTimer); alleenLezen = true;
+    laadNoot = e && e.code === "revoked" ? "Je hebt geen toegang meer tot de gedeelde gegevens." : "De verbinding met de gedeelde gegevens is verbroken. Open de pagina opnieuw.";
+    render();
+  }
+  (async function () {
+    if (!(window.claude && window.claude.use)) { startLokaal(); dataStatus = "geen"; render(); return; }
+    var db = null;
+    try { db = await window.claude.use("db"); } catch (e) {}
+    if (!db) { startLokaal(); dataStatus = "geen"; render(); return; }
+    store = dbStore(db);
+    try { assetsNs = await window.claude.use("assets"); } catch (e) { assetsNs = null; }
+    db.doc("config/data").onSnapshot(function (s) { laadData(s.exists ? s.data() : null); }, function () { if (!D) { dataStatus = "fout"; render(); } });
+    try { userNs = await window.claude.use("user"); } catch (e) { userNs = null; }
+    if (userNs) {
+      try { if ((await userNs.can("data.write")) === false) alleenLezen = true; } catch (e) {}
+      try { uid = await userNs.id(); } catch (e) {}
+    }
+    store.sub("taken", onTaken, dbFout);
+    store.sub("contacten", onContacten, dbFout);
+    db.doc("config/team").onSnapshot(function (s) {
+      var d = s.exists ? s.data() : null;
+      if (d && Array.isArray(d.leden) && d.leden.length) { team = d.leden.filter(function (p) { return p && p.naam; }).map(function (p) { return { naam: String(p.naam), rol: String(p.rol || "") }; }); render(); }
+    }, function () {});
+    // wie ben ik: eerst eigen profiel, dan deze browser, dan de naam van het Claude-account
+    var naam = null;
+    if (uid) { try { var p = await store.getDoc("data/users/" + uid + "/profiel"); if (p && p.naam) naam = p.naam; } catch (e) {} }
+    if (!naam) { try { naam = localStorage.getItem(LS_NAAM); } catch (e) {} }
+    if (!naam && userNs) {
+      try {
+        var acc = ((await userNs.name()) || "").toLowerCase().replace(/[^a-z\- ]/g, "");
+        var hit = team.filter(function (t) { var v = t.naam.toLowerCase(); return acc.split(" ")[0] === v || acc.split(" ")[0] === v.replace("-", ""); })[0];
+        if (hit) naam = hit.naam;
+      } catch (e) {}
+    }
+    if (naam && !ik) { ik = naam; if (uid) store.setDoc("data/users/" + uid + "/profiel", { naam: naam }).catch(function () {}); }
+    render(); checkPopup();
+  })();
+})();
+</script>
+
+</body>
+</html>
