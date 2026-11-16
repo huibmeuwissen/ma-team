@@ -1,9 +1,9 @@
 name: Meldingen versturen
 
+# Meldingen gaan nu via de Cloud Function "meldingen" in Firebase (elke minuut, zie functions/index.js).
+# Deze workflow is alleen nog een reserve om met de hand te starten via het tabblad Actions.
 on:
-  schedule:
-    - cron: "*/5 * * * *"   # elke 5 minuten (GitHub kan dit een paar minuten later uitvoeren)
-  workflow_dispatch:         # handmatig starten via het tabblad Actions
+  workflow_dispatch:
 
 concurrency:
   group: meldingen
