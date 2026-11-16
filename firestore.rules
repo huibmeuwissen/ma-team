@@ -1,0 +1,17 @@
+// Firestore-beveiligingsregels (kopie; actief in de Firebase-console van project ma-teamdashboard)
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /teams/{team}/info/{doc} {
+      allow get: if request.auth != null;
+      allow create: if request.auth != null && doc == 'team' && team.size() >= 6 && team.size() <= 64;
+    }
+    match /teams/{team}/{col}/{doc} {
+      allow read, update, delete: if request.auth != null && (col == 'taken' || col == 'contacten')
+        && exists(/databases/$(database)/documents/teams/$(team)/info/team);
+      allow create: if request.auth != null && (col == 'taken' || col == 'contacten')
+        && exists(/databases/$(database)/documents/teams/$(team)/info/team)
+        && request.resource.data.size() <= 20;
+    }
+  }
+}

@@ -12,6 +12,9 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="MA Taken">
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script>if ("serviceWorker" in navigator) addEventListener("load", function () { navigator.serviceWorker.register("sw.js").catch(function () {}); });</script>
 </head>
 <body>
@@ -225,7 +228,17 @@ td.wrap { min-width: 220px; max-width: 460px; overflow-wrap: anywhere; }
     { naam: "Wilfred", rol: "Buitendienst" }, { naam: "Dirk-Jan", rol: "Buitendienst" },
     { naam: "Marco", rol: "Buitendienst" }, { naam: "Michael", rol: "Buitendienst" }
   ];
-  var LS_NAAM = "maTeam.naam", LS_LOCAL = "maTeam.lokaal";
+  var LS_NAAM = "maTeam.naam", LS_LOCAL = "maTeam.lokaal", LS_CODE = "maTeam.code";
+  // Firebase-project voor de gedeelde opslag (deze gegevens zijn openbaar; de toegang regelen de beveiligingsregels + teamcode)
+  var FB_CONFIG = {
+    apiKey: "AIzaSyDXhqEmOmtL7qvLrvOvh6HFvlt6YmrYW1s",
+    authDomain: "ma-teamdashboard.firebaseapp.com",
+    projectId: "ma-teamdashboard",
+    storageBucket: "ma-teamdashboard.firebasestorage.app",
+    messagingSenderId: "873407711790",
+    appId: "1:873407711790:web:5d4d147db7a1bdc8086dbf"
+  };
+  var fbModus = false, teamCode = null, fbKlaar = null;
 
   var D = null;               // statische data (data.json)
   var KL = {};                // klant op nummer
@@ -388,6 +401,7 @@ td.wrap { min-width: 220px; max-width: 460px; overflow-wrap: anywhere; }
       opts.appendChild(el("button", { type: "button", class: "chip", onclick: function () { kiesNaam(p.naam); } }, [p.naam + " ", el("span", { class: "muted small", text: "· " + p.rol })]));
     });
     card.appendChild(opts);
+    if (fbModus) card.appendChild(el("p", { class: "small muted" }, ["Verkeerd team? ", el("button", { type: "button", class: "klantlink", text: "Andere teamcode invullen", onclick: teamUit })]));
     main.appendChild(card);
   }
   function kiesNaam(n) {
@@ -908,6 +922,7 @@ td.wrap { min-width: 220px; max-width: 460px; overflow-wrap: anywhere; }
     renderNav(now);
     if (alleenLezen && !lokaal) main.appendChild(el("div", { class: "banner", text: "Je kijkt mee. Taken uitdelen en afvinken kan alleen met het deelniveau Contributor of hoger." }));
     else if (laadNoot && (loadedT || loadedC)) main.appendChild(el("div", { class: "banner", text: laadNoot }));
+    if (fbModus && !teamCode) { viewTeamcode(main); return; }
     if (!ik) { viewLogin(main); return; }
     var r = route();
     if (!D && (r === "klanten" || r === "bellijsten")) r = "overzicht";
@@ -994,8 +1009,79 @@ td.wrap { min-width: 220px; max-width: 460px; overflow-wrap: anywhere; }
     laadNoot = e && e.code === "revoked" ? "Je hebt geen toegang meer tot de gedeelde gegevens." : "De verbinding met de gedeelde gegevens is verbroken. Open de pagina opnieuw.";
     render();
   }
+  /* ================= gedeelde opslag via Firebase + teamcode ================= */
+  function normCode(c) { return String(c || "").toLowerCase().replace(/[^a-z0-9-]/g, ""); }
+  function startFirebase() {
+    fbModus = true; clearTimeout(laadTimer);
+    firebase.initializeApp(FB_CONFIG);
+    fbKlaar = firebase.auth().signInAnonymously();
+    try { var n = localStorage.getItem(LS_NAAM); if (n) ik = n; } catch (e) {}
+    var c = null; try { c = localStorage.getItem(LS_CODE); } catch (e) {}
+    if (c) verbindTeam(c, false); else render();
+  }
+  function teamDb(code) {
+    var fdb = firebase.firestore(), base = "teams/" + code + "/";
+    return { collection: function (c) { return fdb.collection(base + c); }, doc: function (p) { return fdb.doc(base + p); } };
+  }
+  var subs = [];
+  function verbindTeam(code, nieuw) {
+    return fbKlaar.then(function () {
+      var tdb = teamDb(code);
+      var info = tdb.doc("info/team");
+      return info.get().then(function (s) {
+        if (s.exists) return true;
+        if (!nieuw) return false;
+        return info.set({ gemaakt: Date.now() }).then(function () { return true; });
+      }).then(function (ok) {
+        if (!ok) return false;
+        teamCode = code; try { localStorage.setItem(LS_CODE, code); } catch (e) {}
+        subs.forEach(function (u) { try { u(); } catch (e) {} });
+        taken = []; contacten = []; loadedT = loadedC = false; alleenLezen = false; laadNoot = "";
+        store = dbStore(tdb);
+        subs = [store.sub("taken", onTaken, dbFout), store.sub("contacten", onContacten, dbFout)];
+        render(); checkPopup();
+        return true;
+      });
+    });
+  }
+  function teamUit() {
+    subs.forEach(function (u) { try { u(); } catch (e) {} }); subs = [];
+    teamCode = null; store = null; taken = []; contacten = []; loadedT = loadedC = false;
+    try { localStorage.removeItem(LS_CODE); } catch (e) {}
+    render();
+  }
+  function viewTeamcode(main) {
+    var inp = el("input", { type: "password", id: "tc-code", autocomplete: "off", placeholder: "Teamcode", "data-focus": true });
+    var err = el("p", { class: "err", hidden: true });
+    var btn = el("button", { type: "button", class: "btn pri", text: "Verder" });
+    var nieuwBox = el("div", { hidden: true }, [
+      el("p", { text: "Er is nog geen team met deze code. Klopt de code? Dan start je hiermee een nieuw team; de anderen gebruiken daarna dezelfde code." }),
+      el("div", { class: "bar" }, [el("button", { type: "button", class: "btn pri", text: "Nieuw team starten", onclick: function () { probeer(true); } }),
+        el("button", { type: "button", class: "btn", text: "Code opnieuw invullen", onclick: function () { nieuwBox.hidden = true; inp.value = ""; inp.focus(); } })])
+    ]);
+    function probeer(nieuw) {
+      err.hidden = true;
+      var c = normCode(inp.value);
+      if (c.length < 6) { err.textContent = "De teamcode heeft minstens 6 letters of cijfers."; err.hidden = false; return; }
+      btn.disabled = true;
+      verbindTeam(c, nieuw).then(function (ok) { btn.disabled = false; if (!ok) nieuwBox.hidden = false; },
+        function () { btn.disabled = false; err.textContent = "Geen verbinding. Controleer je internet en probeer het opnieuw."; err.hidden = false; });
+    }
+    btn.addEventListener("click", function () { probeer(false); });
+    inp.addEventListener("keydown", function (e) { if (e.key === "Enter") probeer(false); });
+    main.appendChild(el("div", { class: "card login" }, [
+      el("h1", { text: "Teamcode" }),
+      el("p", { class: "muted", text: "Vul de teamcode in die je van Huib of Renate hebt gekregen. Je hoeft dit maar één keer te doen op dit apparaat." }),
+      el("div", { class: "field" }, [el("label", { for: "tc-code", text: "Teamcode" }), inp]),
+      err, el("div", { class: "bar" }, [btn]), nieuwBox
+    ]));
+  }
+
   (async function () {
-    if (!(window.claude && window.claude.use)) { startLokaal(); dataStatus = "geen"; render(); return; }
+    if (!(window.claude && window.claude.use)) {
+      if (window.firebase && firebase.initializeApp) { try { startFirebase(); return; } catch (e) {} }
+      startLokaal(); dataStatus = "geen"; render(); return;
+    }
     var db = null;
     try { db = await window.claude.use("db"); } catch (e) {}
     if (!db) { startLokaal(); dataStatus = "geen"; render(); return; }

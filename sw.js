@@ -1,5 +1,5 @@
 // Eenvoudige service worker: maakt de site installeerbaar en werkt offline met de laatst geladen versie.
-const CACHE = "ma-team-v1";
+const CACHE = "ma-team-v2";
 self.addEventListener("install", e => { e.waitUntil(caches.open(CACHE).then(c => c.addAll(["./", "manifest.webmanifest", "icon-192.png"]))); self.skipWaiting(); });
 self.addEventListener("activate", e => { e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k !== CACHE).map(k => caches.delete(k))))); self.clients.claim(); });
 self.addEventListener("fetch", e => {
