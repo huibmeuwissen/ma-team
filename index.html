@@ -170,6 +170,11 @@ td.wrap { min-width: 220px; max-width: 460px; overflow-wrap: anywhere; }
 .list .body { flex: 1 1 auto; min-width: 0; overflow-wrap: anywhere; display: flex; flex-direction: column; gap: 2px; }
 .list .meta { color: var(--muted); font-size: .83rem; }
 .list .acts { flex: none; display: flex; gap: 6px; align-items: center; }
+/* smal scherm: tekst krijgt de volle breedte, knoppen gaan eronder (anders wordt de tekst één letter breed) */
+.list > li { flex-wrap: wrap; }
+.list .body { flex-basis: 160px; }
+@media (max-width: 640px) { th.rol, td.rol { display: none; } }
+@media (max-width: 640px) { .list > li { gap: 6px 12px; } .list .body { flex-basis: 100%; } .list .acts { width: 100%; justify-content: flex-end; } }
 .empty { color: var(--muted); }
 .tekst { white-space: pre-wrap; color: var(--ink-2); }
 
@@ -551,10 +556,10 @@ td.wrap { min-width: 220px; max-width: 460px; overflow-wrap: anywhere; }
         var o = taken.filter(function (t) { return t.voor === p.naam && t.status !== "klaar"; });
         var d = o.filter(function (t) { return status(t, now) === "due"; }).length;
         var k = taken.filter(function (t) { return t.voor === p.naam && t.status === "klaar" && t.afgerondOp > now - 30 * DAG; }).length;
-        tb.appendChild(el("tr", {}, [el("td", { text: p.naam }), el("td", { text: p.rol, class: "muted" }), el("td", { class: "num", text: String(o.length) }),
+        tb.appendChild(el("tr", {}, [el("td", { text: p.naam }), el("td", { text: p.rol, class: "muted rol" }), el("td", { class: "num", text: String(o.length) }),
           el("td", { class: "num" }, [d ? el("span", { class: "pill due", text: String(d) }) : "0"]), el("td", { class: "num", text: String(k) })]));
       });
-      c2.appendChild(el("div", { class: "tw" }, [el("table", {}, [el("thead", {}, [el("tr", {}, [el("th", { text: "Naam" }), el("th", { text: "Rol" }), el("th", { class: "num", text: "Open" }), el("th", { class: "num", text: "Nu opvolgen" }), el("th", { class: "num", text: "Klaar (30 dgn)" })])]), tb])]));
+      c2.appendChild(el("div", { class: "tw" }, [el("table", {}, [el("thead", {}, [el("tr", {}, [el("th", { text: "Naam" }), el("th", { class: "rol", text: "Rol" }), el("th", { class: "num", text: "Open" }), el("th", { class: "num", text: "Nu" }), el("th", { class: "num", text: "Klaar 30 d." })])]), tb])]));
       main.appendChild(c2);
     }
   }
@@ -727,7 +732,7 @@ td.wrap { min-width: 220px; max-width: 460px; overflow-wrap: anywhere; }
   }
   function viewContacten(main) {
     main.appendChild(el("div", { class: "head" }, [el("h1", { text: "Contactregistratie" }),
-      el("p", { text: "Alle contacten die in dit dashboard zijn vastgelegd, nieuwste eerst. De oudere historie uit KING staat per klant op de klantkaart. Deze registraties staan niet automatisch in KING." })]));
+      el("p", { text: "Alle contacten die in dit dashboard zijn vastgelegd, nieuwste eerst." + (D ? " De oudere historie uit KING staat per klant op de klantkaart." : "") + " Deze registraties staan niet automatisch in KING." })]));
     var card = el("div", { class: "card" });
     var bar = el("div", { class: "bar" });
     [""].concat(team.map(function (p) { return p.naam; })).forEach(function (n) {
@@ -919,6 +924,7 @@ td.wrap { min-width: 220px; max-width: 460px; overflow-wrap: anywhere; }
     var now = Date.now(), main = $("main");
     var y = window.scrollY, foc = document.activeElement && document.activeElement.id, sel = foc && document.activeElement.selectionStart;
     main.textContent = "";
+    lastSig = sig(now); // altijd bijwerken, ook als hieronder vroeg wordt gestopt (anders tekent de klok elke seconde opnieuw)
     renderNav(now);
     if (alleenLezen && !lokaal) main.appendChild(el("div", { class: "banner", text: "Je kijkt mee. Taken uitdelen en afvinken kan alleen met het deelniveau Contributor of hoger." }));
     else if (laadNoot && (loadedT || loadedC)) main.appendChild(el("div", { class: "banner", text: laadNoot }));
@@ -1034,7 +1040,7 @@ td.wrap { min-width: 220px; max-width: 460px; overflow-wrap: anywhere; }
         return info.set({ gemaakt: Date.now() }).then(function () { return true; });
       }).then(function (ok) {
         if (!ok) return false;
-        teamCode = code; try { localStorage.setItem(LS_CODE, code); } catch (e) {}
+        teamCode = code; viewTeamcode.waarde = ""; try { localStorage.setItem(LS_CODE, code); } catch (e) {}
         subs.forEach(function (u) { try { u(); } catch (e) {} });
         taken = []; contacten = []; loadedT = loadedC = false; alleenLezen = false; laadNoot = "";
         store = dbStore(tdb);
@@ -1051,7 +1057,8 @@ td.wrap { min-width: 220px; max-width: 460px; overflow-wrap: anywhere; }
     render();
   }
   function viewTeamcode(main) {
-    var inp = el("input", { type: "password", id: "tc-code", autocomplete: "off", placeholder: "Teamcode", "data-focus": true });
+    var inp = el("input", { type: "password", id: "tc-code", autocomplete: "off", placeholder: "Teamcode", "data-focus": true, value: viewTeamcode.waarde || "",
+      oninput: function () { viewTeamcode.waarde = this.value; } });
     var err = el("p", { class: "err", hidden: true });
     var btn = el("button", { type: "button", class: "btn pri", text: "Verder" });
     var nieuwBox = el("div", { hidden: true }, [
