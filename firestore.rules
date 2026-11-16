@@ -20,5 +20,13 @@ service cloud.firestore {
         && request.resource.data.keys().hasOnly(['naam', 'bijgewerkt', 'apparaat'])
         && request.resource.data.naam is string && request.resource.data.naam.size() <= 40;
     }
+    match /teams/{team}/scores/{s} {
+      // MA Memory: ranglijst van het team
+      allow read: if request.auth != null && exists(/databases/$(database)/documents/teams/$(team)/info/team);
+      allow create: if request.auth != null && exists(/databases/$(database)/documents/teams/$(team)/info/team)
+        && request.resource.data.keys().hasOnly(['naam', 'tijd', 'zetten', 'datum'])
+        && request.resource.data.naam is string && request.resource.data.naam.size() <= 40
+        && request.resource.data.tijd is number && request.resource.data.tijd >= 3000;
+    }
   }
 }

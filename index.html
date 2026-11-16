@@ -108,6 +108,21 @@ main { max-width: 1400px; margin: 0 auto; padding-block: 24px 70px; display: fle
 .cardhead { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
 .grid2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
 @media (max-width: 900px) { .grid2 { grid-template-columns: minmax(0, 1fr); } }
+/* spel: MA Memory */
+.memo { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; width: 100%; max-width: 460px; margin: 4px auto 0; }
+.memo button { aspect-ratio: 1; border-radius: 12px; border: 1px solid var(--border); background: var(--brand); color: var(--brand-ink); font-size: clamp(1.6rem, 9vw, 2.4rem); font-weight: 800; cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 0; transition: transform .18s ease, background .18s ease; }
+.memo button .rug { font-size: .95rem; letter-spacing: .04em; opacity: .85; font-style: italic; }
+.memo button.open { background: var(--surface-2); color: var(--ink); transform: scale(1.04); }
+.memo button.gevonden { background: var(--brand-soft); color: var(--ink); border-color: var(--brand-line); cursor: default; }
+.memo button:focus-visible { outline: 3px solid var(--brand-line); outline-offset: 2px; }
+.spelbar { display: flex; flex-wrap: wrap; gap: 8px 18px; align-items: center; justify-content: center; margin-bottom: 12px; font-variant-numeric: tabular-nums; }
+.spelbar b { font-size: 1.15rem; }
+.rang { list-style: none; margin: 0; padding: 0; counter-reset: rang; }
+.rang li { display: flex; gap: 10px; padding: 7px 0; border-top: 1px solid var(--grid); counter-increment: rang; align-items: baseline; }
+.rang li:first-child { border-top: 0; }
+.rang li::before { content: counter(rang) "."; width: 1.6em; color: var(--muted); font-variant-numeric: tabular-nums; }
+.rang .wie { flex: 1; font-weight: 600; }
+.rang .tijd { font-variant-numeric: tabular-nums; }
 .tiles { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; }
 @media (max-width: 900px) { .tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 .tile { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); padding: 14px 16px; text-decoration: none; color: inherit; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
@@ -384,7 +399,7 @@ td.wrap { min-width: 220px; max-width: 460px; overflow-wrap: anywhere; }
   }
 
   /* ================= navigatie ================= */
-  var ROUTES = [["overzicht", "Overzicht"], ["taken", "Taken"], ["klanten", "Klanten"], ["bellijsten", "Bellijsten"], ["contacten", "Contacten"]];
+  var ROUTES = [["overzicht", "Overzicht"], ["taken", "Taken"], ["klanten", "Klanten"], ["bellijsten", "Bellijsten"], ["contacten", "Contacten"], ["spel", "Spel"]];
   function route() { var h = (location.hash || "").slice(1); return ROUTES.some(function (r) { return r[0] === h; }) ? h : "overzicht"; }
   function renderNav(now) {
     var nav = $("nav"); nav.textContent = "";
@@ -735,6 +750,87 @@ td.wrap { min-width: 220px; max-width: 460px; overflow-wrap: anywhere; }
     });
     return ul;
   }
+  /* ================= spel: MA Memory ================= */
+  // Zoek de paren boerderij-plaatjes. De tijd telt vanaf de eerste klik; de snelste tijden van het team staan in de ranglijst.
+  var SPEL_PLAATJES = ["🚜", "🐄", "🌾", "🌽", "🐖", "🐓", "🥔", "🧤"];
+  var LS_BEST = "maTeam.memoryBest";
+  var spel = null, spelTimer = null, scores = [], scoresSub = null;
+  function nieuwSpel() {
+    var kaarten = SPEL_PLAATJES.concat(SPEL_PLAATJES).map(function (p, i) { return { p: p, id: i, open: false, gevonden: false }; });
+    for (var i = kaarten.length - 1; i > 0; i--) { var j = Math.floor(Math.random() * (i + 1)); var x = kaarten[i]; kaarten[i] = kaarten[j]; kaarten[j] = x; }
+    clearInterval(spelTimer);
+    spel = { kaarten: kaarten, gekozen: [], zetten: 0, start: null, eind: null, bezig: false };
+  }
+  function spelTijd() { if (!spel || !spel.start) return 0; return (spel.eind || Date.now()) - spel.start; }
+  function fmtTijd(ms) { var s = ms / 1000; return s < 60 ? s.toFixed(1) + " s" : Math.floor(s / 60) + ":" + String(Math.floor(s % 60)).padStart(2, "0") + " min"; }
+  function spelBest() { try { return Number(localStorage.getItem(LS_BEST)) || 0; } catch (e) { return 0; } }
+  function klikKaart(k) {
+    if (!spel || spel.bezig || k.open || k.gevonden || spel.eind) return;
+    if (!spel.start) { spel.start = Date.now(); spelTimer = setInterval(function () { var n = $("spel-tijd"); if (n) n.textContent = fmtTijd(spelTijd()); }, 100); }
+    k.open = true; spel.gekozen.push(k);
+    if (spel.gekozen.length === 2) {
+      spel.zetten++;
+      var a = spel.gekozen[0], b = spel.gekozen[1];
+      if (a.p === b.p) { a.gevonden = b.gevonden = true; spel.gekozen = []; if (spel.kaarten.every(function (x) { return x.gevonden; })) spelKlaar(); }
+      else { spel.bezig = true; setTimeout(function () { a.open = b.open = false; spel.gekozen = []; spel.bezig = false; tekenSpel(); }, 700); }
+    }
+    tekenSpel();
+  }
+  function spelKlaar() {
+    spel.eind = Date.now(); clearInterval(spelTimer);
+    var t = spelTijd(), best = spelBest(), record = !best || t < best;
+    if (record) { try { localStorage.setItem(LS_BEST, String(t)); } catch (e) {} }
+    toast((record ? "Nieuw persoonlijk record! " : "Klaar! ") + fmtTijd(t) + " in " + spel.zetten + " zetten.");
+    if (fbModus && teamCode && ik) teamDb(teamCode).collection("scores").add({ naam: ik, tijd: t, zetten: spel.zetten, datum: Date.now() }).catch(function () {});
+  }
+  function volgScores() {
+    if (scoresSub || !fbModus || !teamCode) return;
+    scoresSub = teamDb(teamCode).collection("scores").orderBy("tijd").limit(30).onSnapshot(function (s) {
+      scores = s.docs.map(function (d) { return d.data(); }); if (route() === "spel") tekenRanglijst();
+    }, function () { scoresSub = null; });
+    subs.push(function () { if (scoresSub) scoresSub(); scoresSub = null; scores = []; });
+  }
+  function tekenSpel() {
+    var bord = $("spel-bord"); if (!bord || !spel) return;
+    bord.textContent = "";
+    spel.kaarten.forEach(function (k) {
+      var zicht = k.open || k.gevonden;
+      bord.appendChild(el("button", { type: "button", class: k.gevonden ? "gevonden" : k.open ? "open" : "", "aria-label": zicht ? k.p : "Verborgen kaart", onclick: function () { klikKaart(k); } },
+        [zicht ? k.p : el("span", { class: "rug", text: "MA" })]));
+    });
+    var z = $("spel-zetten"); if (z) z.textContent = String(spel.zetten);
+    var t = $("spel-tijd"); if (t) t.textContent = fmtTijd(spelTijd());
+  }
+  function tekenRanglijst() {
+    var box = $("spel-rang"); if (!box) return;
+    box.textContent = "";
+    // per persoon alleen de beste tijd
+    var gezien = {}, top = scores.filter(function (s) { if (!s || typeof s.tijd !== "number" || gezien[s.naam]) return false; gezien[s.naam] = 1; return true; }).slice(0, 10);
+    if (!top.length) { box.appendChild(el("p", { class: "empty", text: "Nog geen tijden. Wie zet de eerste neer?" })); return; }
+    box.appendChild(el("ol", { class: "rang" }, top.map(function (s) {
+      return el("li", {}, [el("span", { class: "wie", text: s.naam + (s.naam === ik ? " (jij)" : "") }), el("span", { class: "tijd", text: fmtTijd(s.tijd) }), el("span", { class: "muted small", text: s.zetten + " zetten" })]);
+    })));
+  }
+  function viewSpel(main) {
+    if (!spel) nieuwSpel();
+    volgScores();
+    var best = spelBest();
+    main.appendChild(el("div", { class: "head" }, [el("h1", { text: "MA Memory" }),
+      el("p", { text: "Even pauze? Zoek de 8 paren zo snel mogelijk. De tijd loopt vanaf je eerste klik." })]));
+    var c1 = el("div", { class: "card" }, [
+      el("div", { class: "spelbar" }, [
+        el("span", {}, ["Tijd ", el("b", { id: "spel-tijd", text: fmtTijd(spelTijd()) })]),
+        el("span", {}, ["Zetten ", el("b", { id: "spel-zetten", text: String(spel.zetten) })]),
+        best ? el("span", { class: "muted small", text: "Jouw record: " + fmtTijd(best) }) : null,
+        el("button", { type: "button", class: "btn sm", text: "Opnieuw", onclick: function () { nieuwSpel(); render(); } })
+      ]),
+      el("div", { class: "memo", id: "spel-bord" })
+    ]);
+    var c2 = el("div", { class: "card" }, [el("h2", { text: "Snelste van het team" }), el("div", { id: "spel-rang" })]);
+    main.appendChild(el("div", { class: "grid2" }, [c1, fbModus ? c2 : null]));
+    tekenSpel(); tekenRanglijst();
+  }
+
   function viewContacten(main) {
     main.appendChild(el("div", { class: "head" }, [el("h1", { text: "Contactregistratie" }),
       el("p", { text: "Alle contacten die in dit dashboard zijn vastgelegd, nieuwste eerst." + (D ? " De oudere historie uit KING staat per klant op de klantkaart." : "") + " Deze registraties staan niet automatisch in KING." })]));
@@ -1009,6 +1105,7 @@ td.wrap { min-width: 220px; max-width: 460px; overflow-wrap: anywhere; }
     else if (r === "klanten") viewKlanten(main);
     else if (r === "bellijsten") viewBellijsten(main);
     else if (r === "contacten") viewContacten(main);
+    else if (r === "spel") viewSpel(main);
     else viewOverzicht(main, now);
     window.scrollTo(0, y);
     if (foc && $(foc)) { var f = $(foc); f.focus(); try { if (sel != null) f.setSelectionRange(sel, sel); } catch (e) {} }
