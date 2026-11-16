@@ -125,6 +125,22 @@ main { max-width: 1400px; margin: 0 auto; padding-block: 24px 70px; display: fle
 .rang li::before { content: counter(rang) "."; width: 1.6em; color: var(--muted); font-variant-numeric: tabular-nums; }
 .rang .wie { flex: 1; font-weight: 600; }
 .rang .tijd { font-variant-numeric: tabular-nums; }
+/* spel: Sudoku */
+.sdk { display: grid; grid-template-columns: repeat(9, minmax(0, 1fr)); width: 100%; max-width: 440px; margin: 4px auto 0; border: 2px solid var(--ink); border-radius: 6px; overflow: hidden; background: var(--surface); }
+.sdk button { aspect-ratio: 1; border: 0; border-right: 1px solid var(--surface-3); border-bottom: 1px solid var(--surface-3); background: var(--surface); color: var(--brand); font-size: clamp(1rem, 5vw, 1.45rem); font-weight: 600; padding: 0; cursor: pointer; font-variant-numeric: tabular-nums; }
+.sdk button.c2, .sdk button.c5 { border-right: 2px solid var(--ink); }
+.sdk button.c8 { border-right: 0; }
+.sdk button.r2, .sdk button.r5 { border-bottom: 2px solid var(--ink); }
+.sdk button.r8 { border-bottom: 0; }
+.sdk button.vast { color: var(--ink); font-weight: 750; cursor: default; }
+.sdk button.buur { background: var(--surface-2); }
+.sdk button.zelfde { background: var(--brand-soft); }
+.sdk button.gekozen { background: var(--brand-line); }
+.sdk button.fout { color: #c0392b; }
+.sdk-pad { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; width: 100%; max-width: 440px; margin: 14px auto 0; }
+.sdk-pad button { height: 48px; border-radius: 10px; border: 1px solid var(--border); background: var(--surface-2); color: var(--ink); font-size: 1.25rem; font-weight: 700; cursor: pointer; }
+.sdk-pad button:active { background: var(--brand-soft); }
+.sdk-pad button.wis { font-size: .95rem; font-weight: 600; }
 .tiles { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; }
 @media (max-width: 900px) { .tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 .tile { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); padding: 14px 16px; text-decoration: none; color: inherit; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
@@ -275,7 +291,8 @@ td.wrap { min-width: 220px; max-width: 460px; overflow-wrap: anywhere; }
   var store = null, lokaal = false, alleenLezen = false;
   var ik = null, uid = null, userNs = null;
   var busy = {}, sure = null, sureTimer = null, uitgesteld = {}, popupOpen = null, drawerKlant = null;
-  var st = { taken: "mij", takenKlaar: false, takenWie: "", klQ: "", klF: "omzet", blL: "prio", blMij: true, ctWie: "" };
+  var st = { taken: "mij", takenKlaar: false, takenWie: "", klQ: "", klF: "omzet", blL: "prio", blMij: true, ctWie: "", spel: "memory", sdkNiveau: "gemiddeld" };
+  try { if (localStorage.getItem("maTeam.spel") === "sudoku") st.spel = "sudoku"; } catch (e) {}
 
   function $(id) { return document.getElementById(id); }
   function el(tag, attrs, kids) {
@@ -792,11 +809,14 @@ td.wrap { min-width: 220px; max-width: 460px; overflow-wrap: anywhere; }
     var t = spelTijd(), best = spelBest(), record = !best || t < best;
     if (record) { try { localStorage.setItem(LS_BEST, String(t)); } catch (e) {} }
     toast((record ? "Nieuw persoonlijk record! " : "Klaar! ") + fmtTijd(t) + " in " + spel.zetten + " zetten.");
-    if (fbModus && teamCode && ik) teamDb(teamCode).collection("scores").add({ naam: ik, tijd: t, zetten: spel.zetten, datum: Date.now() }).catch(function () {});
+    bewaarScore("memory", t, spel.zetten);
+  }
+  function bewaarScore(soort, t, zetten) {
+    if (fbModus && teamCode && ik) teamDb(teamCode).collection("scores").add({ naam: ik, tijd: t, zetten: zetten, datum: Date.now(), spel: soort }).catch(function () {});
   }
   function volgScores() {
     if (scoresSub || !fbModus || !teamCode) return;
-    scoresSub = teamDb(teamCode).collection("scores").orderBy("tijd").limit(30).onSnapshot(function (s) {
+    scoresSub = teamDb(teamCode).collection("scores").orderBy("tijd").limit(300).onSnapshot(function (s) {
       scores = s.docs.map(function (d) { return d.data(); }); if (route() === "spel") tekenRanglijst();
     }, function () { scoresSub = null; });
     subs.push(function () { if (scoresSub) scoresSub(); scoresSub = null; scores = []; });
@@ -815,16 +835,24 @@ td.wrap { min-width: 220px; max-width: 460px; overflow-wrap: anywhere; }
   function tekenRanglijst() {
     var box = $("spel-rang"); if (!box) return;
     box.textContent = "";
-    // per persoon alleen de beste tijd
-    var gezien = {}, top = scores.filter(function (s) { if (!s || typeof s.tijd !== "number" || gezien[s.naam]) return false; gezien[s.naam] = 1; return true; }).slice(0, 10);
+    var soort = st.spel === "sudoku" ? "sudoku-" + (sdk ? sdk.niveau : st.sdkNiveau) : "memory";
+    // alleen dit spel (oude memory-tijden hebben nog geen soort), per persoon de beste tijd
+    var gezien = {}, top = scores.filter(function (s) {
+      if (!s || typeof s.tijd !== "number" || (s.spel || "memory") !== soort || gezien[s.naam]) return false; gezien[s.naam] = 1; return true;
+    }).slice(0, 10);
     if (!top.length) { box.appendChild(el("p", { class: "empty", text: "Nog geen tijden. Wie zet de eerste neer?" })); return; }
     box.appendChild(el("ol", { class: "rang" }, top.map(function (s) {
-      return el("li", {}, [el("span", { class: "wie", text: s.naam + (s.naam === ik ? " (jij)" : "") }), el("span", { class: "tijd", text: fmtTijd(s.tijd) }), el("span", { class: "muted small", text: s.zetten + " zetten" })]);
+      return el("li", {}, [el("span", { class: "wie", text: s.naam + (s.naam === ik ? " (jij)" : "") }), el("span", { class: "tijd", text: fmtTijd(s.tijd) }),
+        el("span", { class: "muted small", text: soort === "memory" ? s.zetten + " zetten" : (s.zetten ? s.zetten + " fout" + (s.zetten === 1 ? "" : "en") : "foutloos") })]);
     })));
   }
   function viewSpel(main) {
-    if (!spel) nieuwSpel();
     volgScores();
+    main.appendChild(el("div", { class: "bar", style: "margin-bottom:14px" }, [["memory", "Memory"], ["sudoku", "Sudoku"]].map(function (s) {
+      return el("button", { type: "button", class: "chip" + (st.spel === s[0] ? " on" : ""), text: s[1], onclick: function () { st.spel = s[0]; try { localStorage.setItem("maTeam.spel", s[0]); } catch (e) {} render(); } });
+    })));
+    if (st.spel === "sudoku") { viewSudoku(main); return; }
+    if (!spel) nieuwSpel();
     var best = spelBest();
     main.appendChild(el("div", { class: "head" }, [el("h1", { text: "MA Memory" }),
       el("p", { text: "Even pauze? Zoek de 8 paren MA-producten zo snel mogelijk. De tijd loopt vanaf je eerste klik; elke ronde andere producten." })]));
@@ -840,6 +868,131 @@ td.wrap { min-width: 220px; max-width: 460px; overflow-wrap: anywhere; }
     var c2 = el("div", { class: "card" }, [el("h2", { text: "Snelste van het team" }), el("div", { id: "spel-rang" })]);
     main.appendChild(el("div", { class: "grid2" }, [c1, fbModus ? c2 : null]));
     tekenSpel(); tekenRanglijst();
+  }
+
+  /* ================= spel: Sudoku ================= */
+  // Elke puzzel wordt hier gemaakt (één oplossing gegarandeerd). Voortgang blijft bewaard op dit apparaat.
+  var SDK_NIVEAUS = [["makkelijk", "Makkelijk", 40], ["gemiddeld", "Gemiddeld", 32], ["moeilijk", "Moeilijk", 26]];
+  var LS_SDK = "maTeam.sudoku";
+  var sdk = null, sdkTimer = null;
+  function sdkKan(g, i, n) {
+    var r = Math.floor(i / 9), c = i % 9, br = r - r % 3, bc = c - c % 3;
+    for (var k = 0; k < 9; k++) {
+      if (g[r * 9 + k] === n || g[k * 9 + c] === n) return false;
+      if (g[(br + Math.floor(k / 3)) * 9 + bc + k % 3] === n) return false;
+    }
+    return true;
+  }
+  // backtracking; telt oplossingen tot "max" (2 is genoeg om uniciteit te controleren)
+  function sdkLos(g, max, willekeurig) {
+    var best = -1, bestOpties = null;
+    for (var i = 0; i < 81; i++) {
+      if (g[i]) continue;
+      var opties = [];
+      for (var n = 1; n <= 9; n++) if (sdkKan(g, i, n)) opties.push(n);
+      if (!opties.length) return 0;
+      if (!bestOpties || opties.length < bestOpties.length) { best = i; bestOpties = opties; if (opties.length === 1) break; }
+    }
+    if (best < 0) return 1;
+    if (willekeurig) bestOpties.sort(function () { return Math.random() - .5; });
+    var tel = 0;
+    for (var j = 0; j < bestOpties.length; j++) {
+      g[best] = bestOpties[j];
+      tel += sdkLos(g, max - tel, willekeurig);
+      if (tel >= max) { if (willekeurig) return tel; g[best] = 0; return tel; }
+      g[best] = 0;
+    }
+    return tel;
+  }
+  function sdkMaak(niveau) {
+    var opl = new Array(81).fill(0);
+    sdkLos(opl, 1, true); // volledig gevuld, willekeurig
+    var puz = opl.slice(), doel = SDK_NIVEAUS.filter(function (x) { return x[0] === niveau; })[0][2];
+    var volgorde = []; for (var i = 0; i < 81; i++) volgorde.push(i);
+    volgorde.sort(function () { return Math.random() - .5; });
+    var over = 81;
+    for (var v = 0; v < volgorde.length && over > doel; v++) {
+      var p = volgorde[v], bewaar = puz[p];
+      puz[p] = 0;
+      if (sdkLos(puz.slice(), 2, false) !== 1) puz[p] = bewaar; else over--;
+    }
+    return { niveau: niveau, puzzel: puz, oplossing: opl, invoer: puz.slice(), gekozen: -1, fouten: 0, start: null, eind: null };
+  }
+  function sdkBewaar() { try { localStorage.setItem(LS_SDK, JSON.stringify(sdk)); } catch (e) {} }
+  function sdkLaad() { try { var s = JSON.parse(localStorage.getItem(LS_SDK) || "null"); if (s && s.puzzel && s.puzzel.length === 81) return s; } catch (e) {} return null; }
+  function sdkTijd() { if (!sdk || !sdk.start) return 0; return (sdk.eind || Date.now()) - sdk.start; }
+  function sdkNieuw(niveau) {
+    clearInterval(sdkTimer); st.sdkNiveau = niveau;
+    sdk = sdkMaak(niveau); sdkBewaar(); render();
+  }
+  function sdkStartKlok() {
+    clearInterval(sdkTimer);
+    if (!sdk || sdk.eind) return;
+    sdkTimer = setInterval(function () { var n = $("sdk-tijd"); if (n) n.textContent = fmtTijd(sdkTijd()); else clearInterval(sdkTimer); }, 250);
+  }
+  function sdkZet(n) {
+    if (!sdk || sdk.eind || sdk.gekozen < 0 || sdk.puzzel[sdk.gekozen]) return;
+    if (!sdk.start) { sdk.start = Date.now(); sdkStartKlok(); }
+    var i = sdk.gekozen;
+    if (n && n !== sdk.oplossing[i] && sdk.invoer[i] !== n) sdk.fouten++;
+    sdk.invoer[i] = n;
+    if (sdk.invoer.every(function (v, k) { return v === sdk.oplossing[k]; })) {
+      sdk.eind = Date.now(); clearInterval(sdkTimer); sdk.gekozen = -1;
+      var t = sdkTijd();
+      toast("Opgelost in " + fmtTijd(t) + (sdk.fouten ? " met " + sdk.fouten + " fout" + (sdk.fouten === 1 ? "" : "en") : ", foutloos!") + "");
+      bewaarScore("sudoku-" + sdk.niveau, t, sdk.fouten);
+    }
+    sdkBewaar(); tekenSudoku();
+  }
+  function tekenSudoku() {
+    var bord = $("sdk-bord"); if (!bord || !sdk) return;
+    bord.textContent = "";
+    var g = sdk.gekozen, gr = g >= 0 ? Math.floor(g / 9) : -1, gc = g >= 0 ? g % 9 : -1, gw = g >= 0 ? sdk.invoer[g] : 0;
+    for (var i = 0; i < 81; i++) (function (i) {
+      var r = Math.floor(i / 9), c = i % 9, v = sdk.invoer[i], vast = !!sdk.puzzel[i];
+      var buur = g >= 0 && (r === gr || c === gc || (Math.floor(r / 3) === Math.floor(gr / 3) && Math.floor(c / 3) === Math.floor(gc / 3)));
+      var cls = ["c" + c, "r" + r, vast ? "vast" : "", i === g ? "gekozen" : buur ? "buur" : "", v && gw && v === gw ? "zelfde" : "", v && !vast && v !== sdk.oplossing[i] ? "fout" : ""].join(" ");
+      bord.appendChild(el("button", { type: "button", class: cls, "aria-label": "Rij " + (r + 1) + ", kolom " + (c + 1) + (v ? ": " + v : ": leeg"),
+        onclick: function () { if (sdk.eind) return; sdk.gekozen = i; tekenSudoku(); } }, [v ? String(v) : ""]));
+    })(i);
+    var f = $("sdk-fouten"); if (f) f.textContent = String(sdk.fouten);
+    var t = $("sdk-tijd"); if (t) t.textContent = fmtTijd(sdkTijd());
+  }
+  document.addEventListener("keydown", function (e) {
+    if (route() !== "spel" || st.spel !== "sudoku" || !sdk || $("dlg") || /input|textarea|select/i.test((document.activeElement || {}).tagName || "")) return;
+    if (/^[1-9]$/.test(e.key)) { sdkZet(Number(e.key)); e.preventDefault(); }
+    else if (e.key === "Backspace" || e.key === "Delete" || e.key === "0") { sdkZet(0); e.preventDefault(); }
+    else if (/^Arrow/.test(e.key) && sdk.gekozen >= 0) {
+      var i = sdk.gekozen, d = { ArrowLeft: -1, ArrowRight: 1, ArrowUp: -9, ArrowDown: 9 }[e.key];
+      var n = i + d; if (n >= 0 && n < 81 && !(d === -1 && i % 9 === 0) && !(d === 1 && i % 9 === 8)) { sdk.gekozen = n; tekenSudoku(); }
+      e.preventDefault();
+    }
+  });
+  function viewSudoku(main) {
+    if (!sdk) sdk = sdkLaad();
+    if (!sdk) { sdk = sdkMaak(st.sdkNiveau); sdkBewaar(); }
+    st.sdkNiveau = sdk.niveau;
+    if (sdk.start && !sdk.eind) sdkStartKlok();
+    main.appendChild(el("div", { class: "head" }, [el("h1", { text: "Sudoku" }),
+      el("p", { text: "Vul elke rij, kolom en elk blok van 3×3 met de cijfers 1 t/m 9. Tik een vakje aan en kies een cijfer. Een fout cijfer kleurt rood." })]));
+    var niveaus = el("div", { class: "bar", style: "justify-content:center" }, SDK_NIVEAUS.map(function (n) {
+      return el("button", { type: "button", class: "chip" + (sdk.niveau === n[0] ? " on" : ""), text: n[1], onclick: function () { sdkNieuw(n[0]); } });
+    }));
+    var pad = el("div", { class: "sdk-pad" }, [1, 2, 3, 4, 5, 6, 7, 8, 9].map(function (n) {
+      return el("button", { type: "button", text: String(n), onclick: function () { sdkZet(n); } });
+    }).concat([el("button", { type: "button", class: "wis", text: "Wis", onclick: function () { sdkZet(0); } })]));
+    var c1 = el("div", { class: "card" }, [
+      niveaus,
+      el("div", { class: "spelbar" }, [
+        el("span", {}, ["Tijd ", el("b", { id: "sdk-tijd", text: fmtTijd(sdkTijd()) })]),
+        el("span", {}, ["Fouten ", el("b", { id: "sdk-fouten", text: String(sdk.fouten) })]),
+        el("button", { type: "button", class: "btn sm", text: "Nieuwe puzzel", onclick: function () { sdkNieuw(sdk.niveau); } })
+      ]),
+      el("div", { class: "sdk", id: "sdk-bord" }), pad
+    ]);
+    var c2 = el("div", { class: "card" }, [el("h2", { text: "Snelste van het team · " + SDK_NIVEAUS.filter(function (n) { return n[0] === sdk.niveau; })[0][1].toLowerCase() }), el("div", { id: "spel-rang" })]);
+    main.appendChild(el("div", { class: "grid2" }, [c1, fbModus ? c2 : null]));
+    tekenSudoku(); tekenRanglijst();
   }
 
   function viewContacten(main) {
