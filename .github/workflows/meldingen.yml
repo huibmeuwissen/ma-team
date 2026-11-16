@@ -1,0 +1,29 @@
+name: Meldingen versturen
+
+on:
+  schedule:
+    - cron: "*/5 * * * *"   # elke 5 minuten (GitHub kan dit een paar minuten later uitvoeren)
+  workflow_dispatch:         # handmatig starten via het tabblad Actions
+
+concurrency:
+  group: meldingen
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  verstuur:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Firebase Admin installeren
+        run: npm install --no-save --no-audit --no-fund firebase-admin@12.7.0
+      - name: Meldingen versturen
+        run: node .github/scripts/meldingen.mjs
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}

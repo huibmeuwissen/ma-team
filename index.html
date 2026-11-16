@@ -15,6 +15,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js"></script>
 <script>if ("serviceWorker" in navigator) addEventListener("load", function () { navigator.serviceWorker.register("sw.js").catch(function () {}); });</script>
 </head>
 <body>
@@ -244,6 +245,8 @@ td.wrap { min-width: 220px; max-width: 460px; overflow-wrap: anywhere; }
     appId: "1:873407711790:web:5d4d147db7a1bdc8086dbf"
   };
   var fbModus = false, teamCode = null, fbKlaar = null;
+  // openbare sleutel voor pushmeldingen (Web Push / VAPID); het geheime deel blijft bij Firebase
+  var VAPID_KEY = "BA5leLSxyY2e-ETSBZBZjHHdCmdIAs6_QYbgHrmpAQ9yPNtxJgijihf8TjjJpcw9_HPXxKzqQPexWnBBIoy39I8";
 
   var D = null;               // statische data (data.json)
   var KL = {};                // klant op nummer
@@ -413,6 +416,7 @@ td.wrap { min-width: 220px; max-width: 460px; overflow-wrap: anywhere; }
     ik = n; try { localStorage.setItem(LS_NAAM, n); } catch (e) {}
     if (store && uid) store.setDoc("data/users/" + uid + "/profiel", { naam: n }).catch(function () {});
     render(); checkPopup();
+    if (fbModus && teamCode && "Notification" in window && Notification.permission === "granted") bewaarToken(true);
   }
 
   /* ================= overzicht ================= */
@@ -427,6 +431,7 @@ td.wrap { min-width: 220px; max-width: 460px; overflow-wrap: anywhere; }
       el("h1", { text: (uur < 12 ? "Goedemorgen " : uur < 18 ? "Goedemiddag " : "Goedenavond ") + ik }),
       el("p", { text: "Je taken, je opvolgingen en wat het team de laatste tijd heeft gedaan." })
     ]));
+    var mk = meldingKaart(); if (mk) main.appendChild(mk);
     main.appendChild(el("div", { class: "tiles" }, [
       tile("#taken", "Nu opvolgen", due.length, due.length ? "klik om af te handelen" : "niets verstreken", due.length > 0),
       tile("#taken", "Mijn open taken", mijn.length, "waarvan " + (mijn.length - due.length) + " gepland"),
@@ -911,10 +916,78 @@ td.wrap { min-width: 220px; max-width: 460px; overflow-wrap: anywhere; }
     });
   }
   function checkPopup() {
-    if (!ik || alleenLezen || !loadedT || $("dlg")) return;
+    if (!ik || alleenLezen || !loadedT) return;
     var now = Date.now();
+    if (document.hidden) lokaleMelding(now);
+    if ($("dlg")) return;
     var t = mijnDue(now).filter(function (x) { return !(uitgesteld[x.id] > now); })[0];
     if (t) openOpvolg(t, true);
+  }
+
+  /* ================= meldingen op de telefoon ================= */
+  // 1) Staat de app op de achtergrond, dan geeft hij zelf een melding (geen server nodig).
+  // 2) Is de app dicht, dan stuurt het GitHub-script (elke 5 min) een pushbericht naar de opgeslagen tokens.
+  var gemeldLokaal = {};
+  function meldingTekst(t) {
+    var wie = t.klantNaam || klantNaam(t.klantN);
+    return { title: wie ? "Heb je " + wie + " nagebeld?" : "Taak opvolgen", body: t.titel + (t.door && t.door !== t.voor ? " (van " + t.door + ")" : "") };
+  }
+  function lokaleMelding(now) {
+    if (!("Notification" in window) || Notification.permission !== "granted" || !navigator.serviceWorker) return;
+    mijnDue(now).forEach(function (t) {
+      var sleutel = t.id + ":" + t.opvolgOp;
+      if (gemeldLokaal[sleutel] || t.gemeldVoor === t.opvolgOp) return;
+      gemeldLokaal[sleutel] = true;
+      var m = meldingTekst(t);
+      navigator.serviceWorker.ready.then(function (reg) {
+        return reg.showNotification(m.title, { body: m.body, icon: "icon-192.png", badge: "icon-192.png", tag: "taak-" + t.id, data: { url: "./#taken" } });
+      }).catch(function () {});
+    });
+  }
+  function isIos() { return /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1); }
+  function isGeinstalleerd() { return (window.matchMedia && matchMedia("(display-mode: standalone)").matches) || navigator.standalone === true; }
+  function meldStatus() {
+    if (!fbModus || !teamCode) return "geen";
+    if (isIos() && !isGeinstalleerd()) return "ios";
+    if (!("Notification" in window) || !navigator.serviceWorker || !window.firebase || !firebase.messaging) return "kan-niet";
+    if (Notification.permission === "denied") return "geweigerd";
+    if (Notification.permission === "granted" && meldToken) return "aan";
+    return "uit";
+  }
+  var meldToken = null, meldBezig = false;
+  function bewaarToken(stil) {
+    if (!fbModus || !teamCode || !ik || !navigator.serviceWorker) return Promise.resolve();
+    return navigator.serviceWorker.ready.then(function (reg) {
+      return firebase.messaging().getToken({ vapidKey: VAPID_KEY, serviceWorkerRegistration: reg });
+    }).then(function (tok) {
+      if (!tok) throw new Error("geen token");
+      meldToken = tok;
+      return teamDb(teamCode).doc("tokens/" + tok).set({ naam: ik, bijgewerkt: Date.now(), apparaat: (isIos() ? "iPhone" : /android/i.test(navigator.userAgent) ? "Android" : "Computer") });
+    }).then(function () { if (!stil) toast("Meldingen staan aan op dit apparaat."); render(); },
+      function () { if (!stil) toast("Meldingen aanzetten lukte niet. Probeer het opnieuw."); });
+  }
+  function zetMeldingenAan() {
+    if (meldBezig) return; meldBezig = true;
+    Notification.requestPermission().then(function (p) {
+      if (p !== "granted") { toast("Je hebt meldingen niet toegestaan."); render(); return; }
+      return bewaarToken(false);
+    }).catch(function () {}).then(function () { meldBezig = false; });
+  }
+  function meldingKaart() {
+    var s = meldStatus();
+    if (s === "geen" || s === "aan") return null;
+    var kaart = el("div", { class: "card" }, [el("h2", { text: "Meldingen op dit apparaat" })]);
+    if (s === "uit") {
+      kaart.appendChild(el("p", { class: "muted", text: "Zet meldingen aan, dan krijg je een seintje als je iemand moet nabellen, ook als de app dicht is." }));
+      kaart.appendChild(el("div", { class: "bar" }, [el("button", { type: "button", class: "btn pri", text: "Meldingen aanzetten", onclick: zetMeldingenAan })]));
+    } else if (s === "ios") {
+      kaart.appendChild(el("p", { class: "muted", text: "Op een iPhone werken meldingen alleen als je de app op je beginscherm zet: tik in Safari op het deelicoon en kies 'Zet op beginscherm'. Open daarna de app vanaf het beginscherm." }));
+    } else if (s === "geweigerd") {
+      kaart.appendChild(el("p", { class: "muted", text: "Meldingen zijn geblokkeerd voor deze app. Zet ze aan in de instellingen van je telefoon (bij de app of bij de browser) en open de app opnieuw." }));
+    } else {
+      kaart.appendChild(el("p", { class: "muted", text: "Deze browser ondersteunt geen meldingen. Gebruik Chrome op Android of de app vanaf het beginscherm op een iPhone." }));
+    }
+    return kaart;
   }
 
   /* ================= render ================= */
@@ -1046,6 +1119,7 @@ td.wrap { min-width: 220px; max-width: 460px; overflow-wrap: anywhere; }
         store = dbStore(tdb);
         subs = [store.sub("taken", onTaken, dbFout), store.sub("contacten", onContacten, dbFout)];
         render(); checkPopup();
+        if (ik && "Notification" in window && Notification.permission === "granted") bewaarToken(true);
         return true;
       });
     });
