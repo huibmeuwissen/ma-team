@@ -6,8 +6,8 @@
 <meta name="robots" content="noindex">
 <title>MA Teamdashboard</title>
 <link rel="manifest" href="manifest.webmanifest">
-<meta name="theme-color" content="#1f6b3a">
-<link rel="icon" type="image/png" href="icon-192.png">
+<meta name="theme-color" content="#244426">
+<link rel="icon" type="image/png" href="favicon-32.png">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -27,7 +27,7 @@
   --ink: #16201a; --ink-2: #4c574f; --muted: #7a847c;
   --grid: #e6e8e1; --border: rgba(22,32,26,.1);
   --brand: #1f6b3a; --brand-dark: #154a29; --brand-ink: #ffffff; --brand-soft: #e7f2ea; --brand-line: #b9d8c3;
-  --top-bg: #163f26; --top-ink: #eaf3ec; --top-muted: #a9c4b1; --top-line: #7fd09e;
+  --top-bg: #244426; --top-ink: #eaf3ec; --top-muted: #a9c4b1; --top-line: #7fd09e;
   --bar: #2f8a52;
   --due-bg: #fff6df; --due-border: #efcb72; --due-ink: #7a5300;
   --good-bg: #e6f4ea; --good-ink: #1d6b35; --crit: #c23434; --crit-bg: #fbeaea;
@@ -84,6 +84,7 @@ a { color: var(--brand); }
 .top .in { display: flex; align-items: stretch; flex-wrap: wrap; gap: 0 20px; max-width: 1400px; margin: 0 auto;
   padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
 .brandname { display: flex; align-items: center; gap: 10px; font-weight: 650; font-size: 1.02rem; min-height: 54px; white-space: nowrap; }
+.brandname .logo { height: 26px; width: auto; display: block; }
 .brandname .ma { font-size: 1.45rem; font-weight: 800; font-style: italic; letter-spacing: -.04em; color: #8fdcab; line-height: 1; }
 .brandname span.t { font-weight: 400; color: var(--top-muted); font-size: .78rem; padding: 2px 8px; border: 1px solid rgba(255,255,255,.18); border-radius: 10px; }
 nav { display: flex; gap: 2px; flex-wrap: wrap; }
@@ -113,7 +114,7 @@ main { max-width: 1400px; margin: 0 auto; padding-block: 24px 70px; display: fle
 .memo button { aspect-ratio: 1; border-radius: 12px; border: 1px solid var(--border); background: var(--brand); color: var(--brand-ink); font-size: clamp(1.6rem, 9vw, 2.4rem); font-weight: 800; cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 0; transition: transform .18s ease, background .18s ease; }
 .memo button img { width: 88%; height: 88%; object-fit: contain; border-radius: 8px; background: #fff; pointer-events: none; }
 .memo button.gevonden img { opacity: .75; }
-.memo button .rug { font-size: .95rem; letter-spacing: .04em; opacity: .85; font-style: italic; }
+.memo button img.rug { width: 52%; height: auto; background: none; border-radius: 0; opacity: .9; }
 .memo button.open { background: #fff; color: var(--ink); transform: scale(1.04); border-color: var(--brand); }
 .memo button.gevonden { background: #fff; color: var(--ink); border: 2px solid var(--brand-line); cursor: default; }
 .memo button:focus-visible { outline: 3px solid var(--brand-line); outline-offset: 2px; }
@@ -247,7 +248,7 @@ td.wrap { min-width: 220px; max-width: 460px; overflow-wrap: anywhere; }
 
 <header class="top">
   <div class="in">
-    <div class="brandname"><span class="ma">MA</span> Meuwissen Agro <span class="t">team</span></div>
+    <div class="brandname"><img class="logo" src="img/logo-wit.png" alt="Meuwissen Agro" width="140" height="26"> <span class="t">team</span></div>
     <nav aria-label="Onderdelen" id="nav"></nav>
     <div class="me" id="me" hidden></div>
   </div>
@@ -827,7 +828,7 @@ td.wrap { min-width: 220px; max-width: 460px; overflow-wrap: anywhere; }
     spel.kaarten.forEach(function (k) {
       var zicht = k.open || k.gevonden;
       bord.appendChild(el("button", { type: "button", class: k.gevonden ? "gevonden" : k.open ? "open" : "", "aria-label": zicht ? k.naam : "Verborgen kaart", title: k.gevonden ? k.naam : null, "data-p": zicht ? k.p : null, onclick: function () { klikKaart(k); } },
-        [zicht ? el("img", { src: "img/memory/" + k.p + ".jpg", alt: k.naam, draggable: "false" }) : el("span", { class: "rug", text: "MA" })]));
+        [zicht ? el("img", { src: "img/memory/" + k.p + ".jpg", alt: k.naam, draggable: "false" }) : el("img", { class: "rug", src: "img/ma-teken-wit.png", alt: "", draggable: "false" })]));
     });
     var z = $("spel-zetten"); if (z) z.textContent = String(spel.zetten);
     var t = $("spel-tijd"); if (t) t.textContent = fmtTijd(spelTijd());
