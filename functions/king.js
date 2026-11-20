@@ -1,5 +1,6 @@
 // Zet de KING-export (CSV's van king-export.ps1) om naar de klantgegevens voor het teamdashboard.
-// BEWUST NIET mee: omzet, facturen, marges, inkoop- en kostprijzen.
+// BEWUST NIET mee: omzet, facturen, marges, inkoop- en kostprijzen. (De exportmap mag ook die tabellen bevatten;
+// deze code leest er alleen klanten, contacten, vertegenwoordigers en van orders alleen nummer/datum/klant/referentie uit.)
 // Alleen klanten, contactgegevens, vertegenwoordiger en contacthistorie.
 
 function parseCsv(tekst) {

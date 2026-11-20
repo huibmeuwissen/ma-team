@@ -85,14 +85,16 @@ exports.kingSync = onSchedule(
     const bestanden = (await get(`${DRIVE}?q=${q2}&fields=files(id,name,modifiedTime)&pageSize=100&supportsAllDrives=true&includeItemsFromAllDrives=true`)).files || [];
     const byNaam = {}; bestanden.forEach(f => { byNaam[f.name] = f; });
     if (!byNaam["klaar.json"] || !byNaam["klanten.csv"] || !byNaam["contacten.csv"] || !byNaam["vertegenwoordigers.csv"]) { console.log("Export onvolledig."); return; }
-    const versie = byNaam["klaar.json"].modifiedTime + (byNaam["laatste_orders.csv"] ? "|" + byNaam["laatste_orders.csv"].modifiedTime : "");
+    // Orders: bij voorkeur orders.csv (volledige exportmap), anders het kleine laatste_orders.csv. Alleen nummer, datum, klant, vertegenwoordiger en referentie worden gebruikt.
+    const ordersBron = byNaam["orders.csv"] ? "orders.csv" : byNaam["laatste_orders.csv"] ? "laatste_orders.csv" : null;
+    const versie = byNaam["klaar.json"].modifiedTime + (ordersBron ? "|" + byNaam[ordersBron].modifiedTime : "");
     const bron = db.doc("kingbron/status");
     const vorige = (await bron.get()).data() || {};
     const teams = await db.collection("teams").listDocuments();
     if (vorige.versie === versie && vorige.teams === teams.length) return;   // niets nieuws
     const lees = naam => get(`${DRIVE}/${byNaam[naam].id}?alt=media&supportsAllDrives=true`, true);
     const klaar = JSON.parse(String(await lees("klaar.json")).replace(/^﻿/, ""));
-    const data = bouwDataset({ klanten: await lees("klanten.csv"), vertegenwoordigers: await lees("vertegenwoordigers.csv"), contacten: await lees("contacten.csv"), laatste_orders: byNaam["laatste_orders.csv"] ? await lees("laatste_orders.csv") : "" }, klaar);
+    const data = bouwDataset({ klanten: await lees("klanten.csv"), vertegenwoordigers: await lees("vertegenwoordigers.csv"), contacten: await lees("contacten.csv"), laatste_orders: ordersBron ? await lees(ordersBron) : "" }, klaar);
     const delen = inStukken(data);
     for (const team of teams) {
       const king = team.collection("king");
