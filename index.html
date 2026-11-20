@@ -425,7 +425,7 @@ td.wrap { min-width: 220px; max-width: 460px; overflow-wrap: anywhere; }
     var nav = $("nav"); nav.textContent = "";
     var nDue = mijnDue(now).length;
     ROUTES.forEach(function (r) {
-      if (!D && (r[0] === "klanten" || r[0] === "bellijsten")) return;
+      if ((!D && r[0] === "klanten") || (!heeftKansen() && r[0] === "bellijsten")) return;
       nav.appendChild(el("a", { href: "#" + r[0], class: route() === r[0] ? "on" : "" }, [r[1], r[0] === "taken" && nDue ? el("span", { class: "npill", text: String(nDue) }) : null]));
     });
     var me = $("me"); me.textContent = ""; me.hidden = !ik;
@@ -485,6 +485,12 @@ td.wrap { min-width: 220px; max-width: 460px; overflow-wrap: anywhere; }
     c2.appendChild(laatste.length ? contactLijst(laatste) : el("p", { class: "empty", text: "Nog geen registraties in dit dashboard. Als iemand een taak afrondt met \"nagebeld\", komt die hier te staan." }));
     main.appendChild(el("div", { class: "grid2" }, [c1, c2]));
     if (!D) return;
+    if (isKing()) {
+      var mijnKl = D.klanten.filter(function (k) { return k.vt === ik; }).length;
+      main.appendChild(el("div", { class: "bar small muted" }, [el("span", { text: "Klantgegevens uit KING · export " + (D.meta.export ? datTijd(new Date(D.meta.export).getTime()) : D.meta.gebouwd) + " · " + D.klanten.length + " klanten en relaties" + (mijnKl ? " · " + mijnKl + " van jou" : "") }),
+        el("a", { href: "#klanten", text: "Naar klanten" })]));
+      return;
+    }
 
     var c3 = el("div", { class: "card" }, [el("div", { class: "cardhead" }, [el("h2", { text: "Omzet per maand 2026" }), el("span", { class: "muted small", text: "Facturen t/m " + dat(D.meta.factuurTot) + " · totaal " + eur(D.meta.factuurTotaal) + " excl. btw" })])]);
     c3.appendChild(el("div", { class: "chart" }, [omzetChart(D.maanden)]));
@@ -616,6 +622,7 @@ td.wrap { min-width: 220px; max-width: 460px; overflow-wrap: anywhere; }
     return res.slice(0, max || 50);
   }
   function viewKlanten(main) {
+    if (isKing()) { viewKlantenKing(main); return; }
     main.appendChild(el("div", { class: "head" }, [el("h1", { text: "Klanten" }),
       el("p", { text: "Debiteuren uit de facturen (nummers 1200xxxx) en relaties van de buitendienst uit het KING-relatiebestand. Klik op een klant voor contactgegevens, contacthistorie en taken." })]));
     var card = el("div", { class: "card" });
@@ -655,6 +662,51 @@ td.wrap { min-width: 220px; max-width: 460px; overflow-wrap: anywhere; }
     tekenTabel();
   }
 
+  /* KING-klanten (geen omzet): zoeken, Mijn klanten, relaties, met open taak */
+  function isKing() { return !!(D && D.meta && D.meta.bron === "king"); }
+  function heeftKansen() { var X = D && D.kansen; return !!X && Object.keys(X).some(function (k) { return X[k] && X[k].length; }); }
+  function viewKlantenKing(main) {
+    if (["mijn", "rel", "deb", "taak"].indexOf(st.klF) < 0) st.klF = D.klanten.some(function (k) { return k.vt === ik; }) ? "mijn" : "rel";
+    main.appendChild(el("div", { class: "head" }, [el("h1", { text: "Klanten" }),
+      el("p", { text: "Rechtstreeks uit KING (export " + (D.meta.export ? datTijd(new Date(D.meta.export).getTime()) : D.meta.gebouwd) + "): relaties van de buitendienst en debiteuren met een vertegenwoordiger of contacthistorie. Klik op een klant voor contactgegevens, contacthistorie en taken." })]));
+    var card = el("div", { class: "card" });
+    var inp = el("input", { type: "search", id: "kl-zoek", class: "search", placeholder: "Zoek op naam, plaats of nummer", value: st.klQ, oninput: function () { st.klQ = this.value; tekenTabel(); } });
+    var bar = el("div", { class: "bar" }, [inp]);
+    [["mijn", "Mijn klanten"], ["rel", "Relaties"], ["deb", "Debiteuren"], ["taak", "Met open taak"]].forEach(function (c) {
+      bar.appendChild(el("button", { type: "button", class: "chip" + (st.klF === c[0] ? " on" : ""), text: c[1], onclick: function () { st.klF = c[0]; render(); } }));
+    });
+    card.appendChild(bar);
+    var holder = el("div"); card.appendChild(holder);
+    main.appendChild(card);
+    function opLaatste(a, b) { return (b.laatste || "") < (a.laatste || "") ? -1 : (b.laatste || "") > (a.laatste || "") ? 1 : 0; }
+    function tekenTabel() {
+      holder.textContent = "";
+      var rows, q = st.klQ.trim().toLowerCase();
+      if (q) { var isNum = /^\d+$/.test(q); rows = D.klanten.filter(function (k) { return isNum ? String(k.n).indexOf(q) === 0 : ((k.naam || "") + " " + (k.naam2 || "") + " " + (k.plaats || "") + " " + (k.vt || "")).toLowerCase().indexOf(q) >= 0; }); }
+      else if (st.klF === "mijn") rows = D.klanten.filter(function (k) { return k.vt === ik; });
+      else if (st.klF === "rel") rows = D.klanten.filter(function (k) { return k.soort === "rel"; });
+      else if (st.klF === "deb") rows = D.klanten.filter(function (k) { return k.soort === "deb"; });
+      else { var nrs = {}; taken.forEach(function (t) { if (t.klantN && t.status !== "klaar") nrs[t.klantN] = 1; }); rows = Object.keys(nrs).map(function (n) { return KL[n]; }).filter(Boolean); }
+      var totaal = rows.length;
+      rows = rows.slice().sort(opLaatste).slice(0, 150);
+      if (!rows.length) { holder.appendChild(el("p", { class: "empty", text: q ? "Geen klant gevonden met \"" + st.klQ + "\"." : st.klF === "mijn" ? "Er staan in KING geen klanten op jouw naam als vertegenwoordiger." : "Geen klanten in deze selectie." })); return; }
+      var ul = el("ul", { class: "list" });
+      rows.forEach(function (k) {
+        var open = taken.filter(function (t) { return t.klantN === k.n && t.status !== "klaar"; }).length;
+        ul.appendChild(el("li", { class: "click", style: "cursor:pointer", onclick: function () { openKlant(k.n); } }, [
+          el("div", { class: "body" }, [
+            el("span", {}, [el("button", { type: "button", class: "klantlink", text: k.naam }), open ? " " : null, open ? el("span", { class: "pill plan", text: open + " taak" + (open > 1 ? "en" : "") }) : null]),
+            el("span", { class: "meta", text: [klantPlaats(k), k.soort === "deb" ? "debiteur " + k.n : "relatie " + k.n, k.vt ? "vert. " + k.vt : "", k.laatste ? "laatste contact " + dat(k.laatste) : ""].filter(Boolean).join(" · ") }),
+            k.tel ? el("span", { class: "meta" }, [el("a", { href: "tel:" + k.tel.replace(/[^\d+]/g, ""), text: "☎ " + k.tel, onclick: function (e) { e.stopPropagation(); } })]) : null
+          ])
+        ]));
+      });
+      holder.appendChild(el("p", { class: "muted small", text: totaal + " klant" + (totaal === 1 ? "" : "en") + (totaal > 150 ? " (eerste 150, recentste contact eerst; zoek om te verfijnen)" : ", recentste contact eerst") }));
+      holder.appendChild(ul);
+    }
+    tekenTabel();
+  }
+
   function openKlant(n) { drawerKlant = n; tekenDrawer(); }
   function sluitDrawer() { drawerKlant = null; var d = $("drawer"); if (d) d.remove(); var s = $("drawer-scrim"); if (s) s.remove(); }
   function tekenDrawer() {
@@ -671,10 +723,10 @@ td.wrap { min-width: 220px; max-width: 460px; overflow-wrap: anywhere; }
     if (k) {
       var kv = el("dl", { class: "kv" });
       function rij(a, b) { if (b) kv.append(el("dt", { text: a }), el("dd", { text: b })); }
-      rij("Tweede naam", k.naam2); rij("Adres", [k.adres, [k.pc, k.plaats].filter(Boolean).join(" ")].filter(Boolean).join(", ")); rij("Telefoon", [k.tel, k.tel2].filter(Boolean).join(" / "));
-      rij("E-mail", k.email); rij("Omzet 2026", k.o26 ? eur(k.o26) + " (" + k.f26 + " facturen)" : ""); rij("Omzet 2025", k.o25 ? eur(k.o25) : ""); rij("Laatste factuur", k.laatste ? dat(k.laatste) : "");
+      rij("Vertegenwoordiger", k.vt); rij("Tweede naam", k.naam2); rij("Adres", [k.adres, [k.pc, k.plaats].filter(Boolean).join(" ")].filter(Boolean).join(", ")); rij("Telefoon", [k.tel, k.tel2].filter(Boolean).join(" / "));
+      rij("E-mail", k.email); rij("Omzet 2026", k.o26 ? eur(k.o26) + " (" + k.f26 + " facturen)" : ""); rij("Omzet 2025", k.o25 ? eur(k.o25) : ""); rij(isKing() ? "Laatste contact" : "Laatste factuur", k.laatste ? dat(k.laatste) : "");
       dr.appendChild(el("div", { class: "card" }, [kv.childNodes.length ? kv : el("p", { class: "empty", text: "Geen adres- of contactgegevens bekend." }),
-        k.soort === "deb" ? el("p", { class: "muted small", text: "Debiteuren en buitendienst-relaties zijn in KING aparte bestanden; daarom staan bij debiteuren vaak geen telefoon of e-mail." }) : null]));
+        k.soort === "deb" && !isKing() ? el("p", { class: "muted small", text: "Debiteuren en buitendienst-relaties zijn in KING aparte bestanden; daarom staan bij debiteuren vaak geen telefoon of e-mail." }) : null]));
     }
     var w = WHY[n] || [];
     if (w.length) {
@@ -1265,7 +1317,7 @@ td.wrap { min-width: 220px; max-width: 460px; overflow-wrap: anywhere; }
     if (fbModus && !teamCode) { viewTeamcode(main); return; }
     if (!ik) { viewLogin(main); return; }
     var r = route();
-    if (!D && (r === "klanten" || r === "bellijsten")) r = "overzicht";
+    if ((!D && r === "klanten") || (!heeftKansen() && r === "bellijsten")) r = "overzicht";
     if (r === "taken") viewTaken(main, now);
     else if (r === "klanten") viewKlanten(main);
     else if (r === "bellijsten") viewBellijsten(main);
@@ -1344,6 +1396,9 @@ td.wrap { min-width: 220px; max-width: 460px; overflow-wrap: anywhere; }
     lokaal = true; clearTimeout(laadTimer); store = localStore();
     try { var n = localStorage.getItem(LS_NAAM); if (n) ik = n; } catch (e) {}
     store.sub("taken", onTaken); store.sub("contacten", onContacten);
+    // alleen voor testen zonder Firebase: ?testdata=<bestand.json> laadt klantgegevens
+    var m = /[?&]testdata=([^&]+)/.exec(location.search);
+    if (m) fetch(decodeURIComponent(m[1])).then(function (r) { return r.json(); }).then(zetData).catch(function () {});
   }
   function dbFout(e) {
     clearTimeout(laadTimer); alleenLezen = true;
@@ -1380,14 +1435,36 @@ td.wrap { min-width: 220px; max-width: 460px; overflow-wrap: anywhere; }
         taken = []; contacten = []; loadedT = loadedC = false; alleenLezen = false; laadNoot = "";
         store = dbStore(tdb);
         subs = [store.sub("taken", onTaken, dbFout), store.sub("contacten", onContacten, dbFout)];
+        volgKing(tdb, code);
         render(); checkPopup();
         if (ik && "Notification" in window && Notification.permission === "granted") bewaarToken(true);
         return true;
       });
     });
   }
+  // KING-klantgegevens: de Firebase-functie kingSync zet ze in teams/<code>/king (status + deel-0..n).
+  // Bij een nieuwe versie haalt de app ze op; de laatste versie wordt in deze browser bewaard voor snel openen.
+  var LS_KING = "maTeam.king", kingVersie = null;
+  function volgKing(tdb, code) {
+    try {
+      var c = JSON.parse(localStorage.getItem(LS_KING) || "null");
+      if (c && c.team === code && c.d) { zetData(JSON.parse(c.d)); kingVersie = c.versie; }
+    } catch (e) {}
+    var stop = tdb.doc("king/status").onSnapshot(function (s) {
+      if (!s.exists) return;
+      var info = s.data(); if (!info || info.versie === kingVersie || !info.delen) return;
+      var vraag = []; for (var i = 0; i < info.delen; i++) vraag.push(tdb.doc("king/deel-" + i).get());
+      Promise.all(vraag).then(function (docs) {
+        var txt = docs.map(function (x) { return (x.data() || {}).d || ""; }).join("");
+        var d = JSON.parse(txt); kingVersie = info.versie; zetData(d);
+        try { localStorage.setItem(LS_KING, JSON.stringify({ team: code, versie: info.versie, d: txt })); } catch (e) { try { localStorage.removeItem(LS_KING); } catch (e2) {} }
+      }).catch(function () {});
+    }, function () {});
+    subs.push(function () { stop(); kingVersie = null; });
+  }
   function teamUit() {
     subs.forEach(function (u) { try { u(); } catch (e) {} }); subs = [];
+    D = null; KL = {}; KING = {}; WHY = {}; try { localStorage.removeItem(LS_KING); } catch (e) {}
     teamCode = null; store = null; taken = []; contacten = []; loadedT = loadedC = false;
     try { localStorage.removeItem(LS_CODE); } catch (e) {}
     render();
