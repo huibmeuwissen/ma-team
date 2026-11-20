@@ -68,7 +68,8 @@ function bouwDataset(bestanden, klaar, opties = {}) {
   contacten.sort((a, b) => (a[1] < b[1] ? 1 : -1));
   // Laatste orders (zonder bedragen): [ordernummer, datum, debiteurnummer, klantnaam, vertegenwoordiger, referentie]
   const orders = bestanden.laatste_orders ? parseCsv(bestanden.laatste_orders).map(o => [
-    o.OrkNummer, (o.OrkDatum || "").slice(0, 10), o.DebiteurNummer, o.AdrNaam1, vtg[o.OrkVtgCode] || o.OrkVtgCode || "", o.OrkReferentie || ""
+    o.OrkNummer, (o.OrkDatum || "").slice(0, 10), o.DebiteurNummer, o.AdrNaam1 || (alle.find(k => String(k.n) === o.DebiteurNummer) || {}).naam || "", vtg[o.OrkVtgCode] || o.OrkVtgCode || "",
+    (o.OrkReferentie || "").replace(/,\s*\d+[.,]\d{2}\)/g, ")")   // webshop zet het orderbedrag in de referentie: eruit
   ]).sort((a, b) => (a[1] < b[1] ? 1 : a[1] > b[1] ? -1 : Number(b[0]) - Number(a[0]))).slice(0, 10) : [];
   return {
     meta: { bron: "king", gebouwd: new Date().toISOString().slice(0, 16).replace("T", " "), export: klaar && klaar.klaar || "", contactenVanaf: vanaf },

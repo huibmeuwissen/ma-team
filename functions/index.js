@@ -85,7 +85,7 @@ exports.kingSync = onSchedule(
     const bestanden = (await get(`${DRIVE}?q=${q2}&fields=files(id,name,modifiedTime)&pageSize=100&supportsAllDrives=true&includeItemsFromAllDrives=true`)).files || [];
     const byNaam = {}; bestanden.forEach(f => { byNaam[f.name] = f; });
     if (!byNaam["klaar.json"] || !byNaam["klanten.csv"] || !byNaam["contacten.csv"] || !byNaam["vertegenwoordigers.csv"]) { console.log("Export onvolledig."); return; }
-    const versie = byNaam["klaar.json"].modifiedTime;
+    const versie = byNaam["klaar.json"].modifiedTime + (byNaam["laatste_orders.csv"] ? "|" + byNaam["laatste_orders.csv"].modifiedTime : "");
     const bron = db.doc("kingbron/status");
     const vorige = (await bron.get()).data() || {};
     const teams = await db.collection("teams").listDocuments();
