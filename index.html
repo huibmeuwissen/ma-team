@@ -486,6 +486,19 @@ td.wrap { min-width: 220px; max-width: 460px; overflow-wrap: anywhere; }
     main.appendChild(el("div", { class: "grid2" }, [c1, c2]));
     if (!D) return;
     if (isKing()) {
+      var oc = el("div", { class: "card" }, [el("div", { class: "cardhead" }, [el("h2", { text: "Laatste 10 orders uit KING" }), el("span", { class: "muted small", text: "export " + (D.meta.export ? datTijd(new Date(D.meta.export).getTime()) : "onbekend") })])]);
+      var ords = D.orders || [];
+      if (!ords.length) oc.appendChild(el("p", { class: "empty", text: "Nog geen orders in de export. Ze komen na de eerstvolgende KING-export." }));
+      else {
+        var ol = el("ul", { class: "list" });
+        ords.forEach(function (o) {
+          ol.appendChild(el("li", {}, [el("div", { class: "body" }, [el("strong", { text: "Order " + o[0] + " · " + (o[3] || "debiteur " + o[2]) }),
+            el("span", { class: "meta", text: [o[4], o[5]].filter(Boolean).join(" · ") })]), el("span", { class: "num", text: o[1] ? dat(new Date(o[1] + "T12:00:00").getTime()) : "" })]));
+        });
+        oc.appendChild(ol);
+        oc.appendChild(el("p", { class: "muted small", text: "Orders die in KING nog niet volledig zijn afgehandeld, nieuwste bovenaan." }));
+      }
+      main.appendChild(oc);
       var mijnKl = D.klanten.filter(function (k) { return k.vt === ik; }).length;
       main.appendChild(el("div", { class: "bar small muted" }, [el("span", { text: "Klantgegevens uit KING · export " + (D.meta.export ? datTijd(new Date(D.meta.export).getTime()) : D.meta.gebouwd) + " · " + D.klanten.length + " klanten en relaties" + (mijnKl ? " · " + mijnKl + " van jou" : "") }),
         el("a", { href: "#klanten", text: "Naar klanten" })]));

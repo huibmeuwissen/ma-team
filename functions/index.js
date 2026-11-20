@@ -92,7 +92,7 @@ exports.kingSync = onSchedule(
     if (vorige.versie === versie && vorige.teams === teams.length) return;   // niets nieuws
     const lees = naam => get(`${DRIVE}/${byNaam[naam].id}?alt=media&supportsAllDrives=true`, true);
     const klaar = JSON.parse(String(await lees("klaar.json")).replace(/^﻿/, ""));
-    const data = bouwDataset({ klanten: await lees("klanten.csv"), vertegenwoordigers: await lees("vertegenwoordigers.csv"), contacten: await lees("contacten.csv") }, klaar);
+    const data = bouwDataset({ klanten: await lees("klanten.csv"), vertegenwoordigers: await lees("vertegenwoordigers.csv"), contacten: await lees("contacten.csv"), laatste_orders: byNaam["laatste_orders.csv"] ? await lees("laatste_orders.csv") : "" }, klaar);
     const delen = inStukken(data);
     for (const team of teams) {
       const king = team.collection("king");
