@@ -419,13 +419,13 @@ td.wrap { min-width: 220px; max-width: 460px; overflow-wrap: anywhere; }
   }
 
   /* ================= navigatie ================= */
-  var ROUTES = [["overzicht", "Overzicht"], ["taken", "Taken"], ["klanten", "Klanten"], ["bellijsten", "Bellijsten"], ["contacten", "Contacten"], ["spel", "Spel"]];
+  var ROUTES = [["overzicht", "Overzicht"], ["taken", "Taken"], ["klanten", "Klanten"], ["orders", "Orders"], ["bellijsten", "Bellijsten"], ["contacten", "Contacten"], ["spel", "Spel"]];
   function route() { var h = (location.hash || "").slice(1); return ROUTES.some(function (r) { return r[0] === h; }) ? h : "overzicht"; }
   function renderNav(now) {
     var nav = $("nav"); nav.textContent = "";
     var nDue = mijnDue(now).length;
     ROUTES.forEach(function (r) {
-      if ((!D && r[0] === "klanten") || (!heeftKansen() && r[0] === "bellijsten")) return;
+      if ((!D && r[0] === "klanten") || (!heeftKansen() && r[0] === "bellijsten") || (r[0] === "orders" && !(isKing() && D.orders && D.orders.length))) return;
       nav.appendChild(el("a", { href: "#" + r[0], class: route() === r[0] ? "on" : "" }, [r[1], r[0] === "taken" && nDue ? el("span", { class: "npill", text: String(nDue) }) : null]));
     });
     var me = $("me"); me.textContent = ""; me.hidden = !ik;
@@ -486,7 +486,7 @@ td.wrap { min-width: 220px; max-width: 460px; overflow-wrap: anywhere; }
     main.appendChild(el("div", { class: "grid2" }, [c1, c2]));
     if (!D) return;
     if (isKing()) {
-      var oc = el("div", { class: "card" }, [el("div", { class: "cardhead" }, [el("h2", { text: "Laatste 10 orders uit KING" }), el("span", { class: "muted small", text: "export " + (D.meta.export ? datTijd(new Date(D.meta.export).getTime()) : "onbekend") })])]);
+      var oc = el("div", { class: "card" }, [el("div", { class: "cardhead" }, [el("h2", { text: "Laatste 10 orders uit KING" }), el("a", { href: "#orders", class: "small", text: "Met artikelen en bedragen" })])]);
       var ords = D.orders || [];
       if (!ords.length) oc.appendChild(el("p", { class: "empty", text: "Nog geen orders in de export. Ze komen na de eerstvolgende KING-export." }));
       else {
@@ -521,6 +521,32 @@ td.wrap { min-width: 220px; max-width: 460px; overflow-wrap: anywhere; }
     main.appendChild(el("div", { class: "grid2" }, [c3, c4]));
     var info = el("div", { class: "bar small muted" }, [el("span", { text: "Klantgegevens: stand " + (D.meta.gebouwd || "onbekend") + (dataInfo && dataInfo.geupload ? " · geüpload " + dat(dataInfo.geupload) + (dataInfo.door ? " door " + dataInfo.door : "") : "") + " · " + D.klanten.length + " klanten en relaties" })]);
     main.appendChild(info);
+  }
+  /* ================= orders (uit KING) ================= */
+  function eur2(v) { return v == null || isNaN(v) ? "–" : "€ " + Number(v).toLocaleString("nl-NL", { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+  function aantalTxt(v) { return v == null ? "" : Number(v).toLocaleString("nl-NL", { maximumFractionDigits: 2 }); }
+  function viewOrders(main) {
+    var ords = D.orders || [];
+    main.appendChild(el("div", { class: "head" }, [el("h1", { text: "Orders" }),
+      el("p", { text: "De 10 nieuwste orders uit KING (orders die nog niet volledig zijn afgehandeld), met artikelen en orderbedrag excl. btw. Export van " + (D.meta.export ? datTijd(new Date(D.meta.export).getTime()) : "onbekend") + "." })]));
+    ords.forEach(function (o) {
+      var gemaakt = o[6] ? datTijd(new Date(o[6].replace(" ", "T")).getTime()) : (o[1] ? dat(o[1]) : "");
+      var regels = o[8] || [];
+      var kaart = el("div", { class: "card" }, [
+        el("div", { class: "cardhead" }, [el("h2", { text: "Order " + o[0] + " · " + (o[3] || "debiteur " + o[2]) }), el("strong", { text: eur2(o[7]) })]),
+        el("p", { class: "muted small", text: ["Aangemaakt " + gemaakt, o[4] ? "vertegenwoordiger " + o[4] : "", o[5]].filter(Boolean).join(" · ") })
+      ]);
+      if (regels.length) {
+        var ul = el("ul", { class: "list" });
+        regels.forEach(function (r) {
+          ul.appendChild(el("li", {}, [el("div", { class: "body" }, [el("span", { text: (aantalTxt(r[2]) ? aantalTxt(r[2]) + " × " : "") + (r[1] || r[0] || "Regel") }), r[0] ? el("span", { class: "meta", text: "artikel " + r[0] }) : null]),
+            el("span", { class: "num", text: eur2(r[3]) })]));
+        });
+        kaart.appendChild(ul);
+        kaart.appendChild(el("p", { class: "muted small", text: "Bedragen excl. btw." }));
+      } else kaart.appendChild(el("p", { class: "empty", text: "Geen orderregels in de export." }));
+      main.appendChild(kaart);
+    });
   }
   function tile(href, l, v, n, hot) { return el("a", { href: href, class: "tile" + (hot ? " hot" : "") }, [el("span", { class: "l", text: l }), el("span", { class: "v", text: String(v) }), el("span", { class: "n", text: n })]); }
 
@@ -1330,8 +1356,9 @@ td.wrap { min-width: 220px; max-width: 460px; overflow-wrap: anywhere; }
     if (fbModus && !teamCode) { viewTeamcode(main); return; }
     if (!ik) { viewLogin(main); return; }
     var r = route();
-    if ((!D && r === "klanten") || (!heeftKansen() && r === "bellijsten")) r = "overzicht";
-    if (r === "taken") viewTaken(main, now);
+    if ((!D && r === "klanten") || (!heeftKansen() && r === "bellijsten") || (r === "orders" && !(isKing() && D.orders && D.orders.length))) r = "overzicht";
+    if (r === "orders") viewOrders(main);
+    else if (r === "taken") viewTaken(main, now);
     else if (r === "klanten") viewKlanten(main);
     else if (r === "bellijsten") viewBellijsten(main);
     else if (r === "contacten") viewContacten(main);

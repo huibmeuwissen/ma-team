@@ -68,9 +68,18 @@ function bouwDataset(bestanden, klaar, opties = {}) {
   klanten.forEach(k => { delete k._gid; });
   contacten.sort((a, b) => (a[1] < b[1] ? 1 : -1));
   // Laatste orders (zonder bedragen): [ordernummer, datum, debiteurnummer, klantnaam, vertegenwoordiger, referentie]
+  // Op verzoek van Huib (22-11-2026) per order ook: aangemaakt op, orderbedrag excl. btw en de orderregels (artikel, aantal, regelbedrag).
+  // Nooit kostprijzen of marges.
+  const getal = s => { const n = Number(String(s || "").replace(",", ".")); return isNaN(n) ? null : Math.round(n * 100) / 100; };
+  const regelsPerOrder = {};
+  if (bestanden.orderregels) parseCsv(bestanden.orderregels).forEach(r => {
+    (regelsPerOrder[r.OrkNummer] = regelsPerOrder[r.OrkNummer] || []).push([Number(r.OrrRegelnr) || 0, r.ArtCode || "", r.ArtOms || "", getal(r.OrrAantalBesteld), getal(r.OrrRegelTotaal)]);
+  });
   const orders = bestanden.laatste_orders ? parseCsv(bestanden.laatste_orders).map(o => [
     o.OrkNummer, (o.OrkDatum || "").slice(0, 10), o.DebiteurNummer, o.AdrNaam1 || (alle.find(k => String(k.n) === o.DebiteurNummer) || {}).naam || "", vtg[o.OrkVtgCode] || o.OrkVtgCode || "",
-    (o.OrkReferentie || "").replace(/,\s*\d+[.,]\d{2}\)/g, ")")   // webshop zet het orderbedrag in de referentie: eruit
+    (o.OrkReferentie || "").replace(/,\s*\d+[.,]\d{2}\)/g, ")"),   // webshop zet het orderbedrag in de referentie: eruit
+    (o.OrkAangemaaktOp || "").slice(0, 16), getal(o.OrkTotaalExclBtw),
+    (regelsPerOrder[o.OrkNummer] || []).sort((a, b) => a[0] - b[0]).map(r => r.slice(1))
   ]).sort((a, b) => (a[1] < b[1] ? 1 : a[1] > b[1] ? -1 : Number(b[0]) - Number(a[0]))).slice(0, 10) : [];
   return {
     meta: { bron: "king", gebouwd: new Date().toISOString().slice(0, 16).replace("T", " "), export: klaar && klaar.klaar || "", contactenVanaf: vanaf },
