@@ -1,7 +1,7 @@
 ﻿// Service worker van het MA Teamdashboard:
 // - maakt de site installeerbaar en laat de laatst geladen versie offline werken;
 // - toont pushmeldingen ("Heb je ... nagebeld?") ook als de app dicht is.
-const CACHE = "ma-team-v11";
+const CACHE = "ma-team-v12";
 self.addEventListener("install", e => { e.waitUntil(caches.open(CACHE).then(c => c.addAll(["./", "manifest.webmanifest", "icon-192.png"]))); self.skipWaiting(); });
 self.addEventListener("activate", e => { e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k !== CACHE).map(k => caches.delete(k))))); self.clients.claim(); });
 self.addEventListener("fetch", e => {

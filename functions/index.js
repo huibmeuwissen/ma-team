@@ -87,7 +87,8 @@ exports.kingSync = onSchedule(
     if (!byNaam["klaar.json"] || !byNaam["klanten.csv"] || !byNaam["contacten.csv"] || !byNaam["vertegenwoordigers.csv"]) { console.log("Export onvolledig."); return; }
     // Orders: bij voorkeur orders.csv (volledige exportmap), anders het kleine laatste_orders.csv. Alleen nummer, datum, klant, vertegenwoordiger en referentie worden gebruikt.
     const ordersBron = byNaam["orders.csv"] ? "orders.csv" : byNaam["laatste_orders.csv"] ? "laatste_orders.csv" : null;
-    const versie = byNaam["klaar.json"].modifiedTime + (ordersBron ? "|" + byNaam[ordersBron].modifiedTime : "");
+    const CODEVERSIE = "c3";   // ophogen als king.js iets anders gaat opbouwen: dan wordt alles opnieuw gebouwd
+    const versie = CODEVERSIE + "|" + byNaam["klaar.json"].modifiedTime +(ordersBron ? "|" + byNaam[ordersBron].modifiedTime : "");
     const bron = db.doc("kingbron/status");
     const vorige = (await bron.get()).data() || {};
     const teams = await db.collection("teams").listDocuments();
