@@ -515,7 +515,7 @@ td.wrap { min-width: 220px; max-width: 460px; overflow-wrap: anywhere; }
   function viewOrders(main) {
     var ords = D.orders || [];
     main.appendChild(el("div", { class: "head" }, [el("h1", { text: "Orders" }),
-      el("p", { text: "De 10 nieuwste orders uit KING (orders die nog niet volledig zijn afgehandeld), met artikelen en orderbedrag excl. btw. Export van " + (D.meta.export ? datTijd(new Date(D.meta.export).getTime()) : "onbekend") + "." })]));
+      el("p", { text: "De 10 nieuwste orders uit KING (orders die nog niet volledig zijn afgehandeld), zonder Tuinartikelen.nu, met artikelen en orderbedrag excl. btw. Export van " + (D.meta.export ? datTijd(new Date(D.meta.export).getTime()) : "onbekend") + "." })]));
     ords.forEach(function (o) {
       var gemaakt = o[6] ? datTijd(new Date(o[6].replace(" ", "T")).getTime()) : (o[1] ? dat(o[1]) : "");
       var regels = o[8] || [];

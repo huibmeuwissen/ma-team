@@ -75,8 +75,11 @@ function bouwDataset(bestanden, klaar, opties = {}) {
   if (bestanden.orderregels) parseCsv(bestanden.orderregels).forEach(r => {
     (regelsPerOrder[r.OrkNummer] = regelsPerOrder[r.OrkNummer] || []).push([Number(r.OrrRegelnr) || 0, r.ArtCode || "", r.ArtOms || "", getal(r.OrrAantalBesteld), getal(r.OrrRegelTotaal)]);
   });
-  const orders = bestanden.laatste_orders ? parseCsv(bestanden.laatste_orders).map(o => [
-    o.OrkNummer, (o.OrkDatum || "").slice(0, 10), o.DebiteurNummer, o.AdrNaam1 || (alle.find(k => String(k.n) === o.DebiteurNummer) || {}).naam || "", vtg[o.OrkVtgCode] || o.OrkVtgCode || "",
+  // Op verzoek van Huib (27-11-2026): orders van de webshop Tuinartikelen.nu niet meetellen
+  const klantNaam = o => o.AdrNaam1 || (alle.find(k => String(k.n) === o.DebiteurNummer) || {}).naam || "";
+  const webshop = o => o.DebiteurNummer === "12002716" || /tuinartikelen\.nu/i.test(klantNaam(o));
+  const orders = bestanden.laatste_orders ? parseCsv(bestanden.laatste_orders).filter(o => !webshop(o)).map(o => [
+    o.OrkNummer, (o.OrkDatum || "").slice(0, 10), o.DebiteurNummer, klantNaam(o), vtg[o.OrkVtgCode] || o.OrkVtgCode || "",
     (o.OrkReferentie || "").replace(/,\s*\d+[.,]\d{2}\)/g, ")"),   // webshop zet het orderbedrag in de referentie: eruit
     (o.OrkAangemaaktOp || "").slice(0, 16), getal(o.OrkTotaalExclBtw),
     (regelsPerOrder[o.OrkNummer] || []).sort((a, b) => a[0] - b[0]).map(r => r.slice(1))
