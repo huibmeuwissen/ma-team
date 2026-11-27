@@ -169,6 +169,8 @@ a.tile:hover { border-color: var(--brand-line); }
 .field > label, .field > .lbl { font-size: .76rem; font-weight: 650; text-transform: uppercase; letter-spacing: .05em; color: var(--ink-2); }
 input[type="text"], input[type="search"], input[type="date"], select, textarea { width: 100%; background: var(--surface); border: 1px solid var(--surface-3); border-radius: 8px; padding: 8px 10px; }
 textarea { resize: vertical; min-height: 70px; }
+.inspreek { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.inspreek p { margin: 0; flex: 1; min-width: 160px; }
 input:focus, select:focus, textarea:focus { border-color: var(--brand); outline: 2px solid var(--brand-soft); outline-offset: 0; }
 .search { max-width: 380px; }
 .opts { display: flex; flex-wrap: wrap; gap: 6px; }
@@ -1099,7 +1101,58 @@ td.wrap { min-width: 220px; max-width: 460px; overflow-wrap: anywhere; }
     setTimeout(function () { var f = dlg.querySelector("[data-focus]") || dlg.querySelector("input,textarea,select,button"); if (f) f.focus(); }, 30);
     return dlg;
   }
-  function sluitDialoog() { var d = $("dlg"); if (d) d.remove(); popupOpen = null; }
+  function sluitDialoog() { stopInspreken(true); var d = $("dlg"); if (d) d.remove(); popupOpen = null; }
+
+  /* Inspreken: zet gesproken tekst (Nederlands) achter wat al in het tekstvak staat.
+     De spraakherkenning zit in de browser (Google/Apple); wordt die niet ondersteund, dan komt er geen knop.
+     Per zin een nieuwe sessie: doorlopend luisteren geeft op Android dubbele tekst. */
+  var inspraak = null;   // { rec, stop }
+  function stopInspreken(meteen) { if (inspraak) inspraak.stop(meteen); }
+  function inspreekKnop(vak) {
+    var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SR) return null;
+    var knop = el("button", { type: "button", class: "btn", text: "🎤 Inspreken", "aria-pressed": "false" });
+    var status = el("p", { class: "muted small", role: "status", text: "Spraak wordt door Google of Apple omgezet naar tekst." });
+    var FOUT = {
+      "not-allowed": "Geen toegang tot de microfoon. Sta de microfoon toe bij de instellingen van de browser.",
+      "service-not-allowed": "Inspreken werkt hier niet. Gebruik het microfoontje op je toetsenbord.",
+      "audio-capture": "Geen microfoon gevonden.",
+      "network": "Geen verbinding. Inspreken heeft internet nodig.",
+      "no-speech": "Niets gehoord. Tik op Inspreken om opnieuw te beginnen."
+    };
+    function begin() {
+      stopInspreken(true);
+      var actief = true, rec = null, melding = "";
+      var sessie = { stop: function (meteen) { actief = false; if (rec) { if (meteen) { rec.onresult = null; rec.abort(); klaar(); } else rec.stop(); } } };
+      function klaar() {
+        if (inspraak === sessie) inspraak = null;
+        knop.textContent = "🎤 Inspreken"; knop.setAttribute("aria-pressed", "false"); knop.classList.remove("pri");
+        status.textContent = melding || "Controleer de tekst voordat je opslaat.";
+      }
+      function luister() {
+        var basis = vak.value.replace(/\s+$/, "");
+        rec = new SR(); rec.lang = "nl-NL"; rec.continuous = false; rec.interimResults = true;
+        rec.onresult = function (e) {
+          var t = "";
+          for (var i = 0; i < e.results.length; i++) t += e.results[i][0].transcript;
+          t = t.trim(); if (!t) return;
+          if (!basis || /[.!?]$/.test(basis)) t = t.charAt(0).toUpperCase() + t.slice(1);
+          vak.value = (basis ? basis + " " : "") + t;
+          if (vak.maxLength > 0) vak.value = vak.value.slice(0, vak.maxLength);
+          vak.scrollTop = vak.scrollHeight;
+        };
+        rec.onerror = function (e) { if (e.error === "aborted") return; actief = false; melding = FOUT[e.error] || "Inspreken lukte niet. Gebruik het microfoontje op je toetsenbord."; };
+        rec.onend = function () { if (actief && vak.isConnected) luister(); else klaar(); };
+        try { rec.start(); } catch (x) { actief = false; melding = FOUT["service-not-allowed"]; klaar(); }
+      }
+      inspraak = sessie;
+      knop.textContent = "⏹ Stop"; knop.setAttribute("aria-pressed", "true"); knop.classList.add("pri");
+      status.textContent = "Ik luister… tik op Stop als je klaar bent.";
+      luister();
+    }
+    knop.addEventListener("click", function () { if (knop.getAttribute("aria-pressed") === "true") stopInspreken(false); else begin(); });
+    return el("div", { class: "inspreek" }, [knop, status]);
+  }
   document.addEventListener("keydown", function (e) {
     if (e.key !== "Escape") return;
     if ($("dlg")) { if (popupOpen) uitgesteld[popupOpen] = Date.now() + 10 * MIN; sluitDialoog(); }
@@ -1193,7 +1246,7 @@ td.wrap { min-width: 220px; max-width: 460px; overflow-wrap: anywhere; }
       el("div", { class: "kop" }, [el("h2", { id: "dlg-titel", text: "Contact registreren" }), el("button", { type: "button", class: "x", "aria-label": "Sluiten", text: "×", onclick: sluitDialoog })]),
       kk.el,
       el("div", { class: "field" }, [el("span", { class: "lbl", text: "Soort contact" }), soort]),
-      el("div", { class: "field" }, [el("label", { for: "cf-tekst", text: "Verslag" }), tekst]),
+      el("div", { class: "field" }, [el("label", { for: "cf-tekst", text: "Verslag" }), tekst, inspreekKnop(tekst)]),
       err,
       el("div", { class: "foot" }, [el("button", { type: "button", class: "btn", text: "Annuleren", onclick: sluitDialoog }), btn])
     ]);
@@ -1225,7 +1278,7 @@ td.wrap { min-width: 220px; max-width: 460px; overflow-wrap: anywhere; }
         log.length ? el("span", { class: "muted small", text: log.map(function (l) { return dat(l.t) + ": " + l.tekst; }).join("\n") }) : null]),
       el("label", { class: "check", for: "op-gedaan" }, [nagebeld, k || t.klantNaam ? "Ja, ik heb nagebeld" : "Ja, gedaan"]),
       soortVeld,
-      el("div", { class: "field" }, [el("label", { for: "op-opm", text: "Opmerking" }), opm]),
+      el("div", { class: "field" }, [el("label", { for: "op-opm", text: "Opmerking" }), opm, inspreekKnop(opm)]),
       el("div", { class: "field" }, [el("span", { class: "lbl", text: "Daarna" }), intervalKeuze("op-iv", "klaar", true)]),
       err,
       el("div", { class: "foot" }, [
